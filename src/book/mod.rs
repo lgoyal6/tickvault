@@ -1,6 +1,7 @@
 //! The L2 order book and the invariants it must never violate silently.
 
 pub mod checksum;
+pub mod l3;
 
 use std::collections::BTreeMap;
 use std::fmt;
