@@ -160,6 +160,34 @@ pub async fn serve(
         }));
     }
 
+    if !config.retention.is_unbounded() {
+        let config = config.clone();
+        let clock = Arc::clone(&clock);
+        let mut shutdown = shutdown.clone();
+        tasks.push(tokio::spawn(async move {
+            tracing::info!(policy = %config.retention.describe(), "retention");
+            loop {
+                tokio::select! {
+                    _ = tokio::time::sleep(config.retention_interval()) => {}
+                    _ = shutdown.changed() => return,
+                }
+                let now = clock.stamp().wall_nanos;
+                for entry in &config.venues {
+                    let dir = config.archive_for(entry.name);
+                    match crate::store::retention::enforce(&dir, config.retention, now) {
+                        Ok(removed) if removed.files > 0 => {
+                            tracing::info!(venue = %entry.name, "retention: {removed}");
+                        }
+                        Ok(_) => {}
+                        Err(e) => {
+                            tracing::warn!(venue = %entry.name, error = %e, "retention failed");
+                        }
+                    }
+                }
+            }
+        }));
+    }
+
     for task in tasks {
         // A panicked venue task must not take the others with it.
         if let Err(e) = task.await {
