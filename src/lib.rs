@@ -9,7 +9,9 @@
 //! Reading order, roughly bottom up:
 //!
 //! - [`fixed`] exact decimals, because checksum validation cannot survive floats
+//! - [`book`] the L2 book, its crossed-book invariant, and Kraken's CRC32
 
+pub mod book;
 pub mod clock;
 pub mod error;
 pub mod fixed;
