@@ -169,7 +169,8 @@ because a gate asserted a property rather than an output.
   setting, corrupting for order-by-order.
 - **The writer deadlocked on shutdown**, because a ticker task held a strong
   sender clone so aborting it never released the channel.
-- **A feed that went silent was never noticed.** Found on a three hour capture:
+- **A feed that went silent was never noticed**, and the coverage grid is what
+  caught it. Found on a three hour capture:
   Bitstamp stopped sending without closing the connection, so the socket stayed
   ESTABLISHED and the reader waited on it at zero CPU for sixty two minutes.
   That is the worst failure here, because the archive ends up with no rows and
