@@ -63,6 +63,6 @@ jobs:
         working-directory: bindings
         run: |
           maturin build --release --out dist
-          pip install --no-index --find-links dist tickvault
+          pip install --no-index --find-links dist tickvault-ob
       - working-directory: bindings
         run: pytest tests -q

@@ -79,7 +79,7 @@ jobs:
       # need it built and never need a live venue.
       - run: cargo build --release --bin tickvault
       - run: pip install pytest pyarrow polars pandas matplotlib
-      - run: pip install --no-index --find-links dist tickvault
+      - run: pip install --no-index --find-links dist tickvault-ob
       - working-directory: bindings
         run: pytest tests -q
 
