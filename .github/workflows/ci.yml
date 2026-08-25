@@ -1,0 +1,68 @@
+name: ci
+
+on: [push, pull_request]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Formatting, lints and the whole suite. Clippy is -D warnings because a
+  # warning nobody fails on is a warning nobody reads.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup component add rustfmt clippy
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test --release
+
+  # The phase 3 acceptance gate, and the reason the archive can claim anything
+  # about crashes: SIGKILL the writer at randomised offsets during sustained
+  # write, restart, and assert every file reads back and the truncation point is
+  # recorded. It spawns and kills real processes, so it lives behind --ignored
+  # and runs here rather than on every developer's `cargo test`.
+  crash-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo test --release --test gate_crash_recovery -- --ignored --nocapture
+
+  # Two claims. The read half of the crate compiles without the capture half,
+  # which is what makes the viewer possible; and the viewer rebuilds the same
+  # book the library does, which is what makes the viewer honest.
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup target add wasm32-unknown-unknown
+      # The feature split: no tokio, no TLS stack, no C compression codec.
+      - run: cargo check --lib --no-default-features --target wasm32-unknown-unknown
+      - name: viewer compiles to wasm
+        working-directory: viewer
+        run: cargo build --release --target wasm32-unknown-unknown
+      - name: viewer agrees with the library
+        working-directory: viewer
+        run: cargo test --release
+
+  # The bindings, against a wheel rather than a source tree, so the tests
+  # exercise what someone actually installs.
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # The Python tests replay committed tapes through this binary to build a
+      # fixture archive, so they need it built but never need a live venue.
+      - run: cargo build --release --bin tickvault
+      - run: pip install maturin pytest pyarrow polars pandas matplotlib
+      - name: build and install the wheel
+        working-directory: bindings
+        run: |
+          maturin build --release --out dist
+          pip install --no-index --find-links dist tickvault
+      - working-directory: bindings
+        run: pytest tests -q
