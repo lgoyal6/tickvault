@@ -395,6 +395,8 @@ impl BookSession {
             .to_l2(order.stamps);
         self.books.insert(symbol.clone(), l2);
         self.gaps.record_applied(self.venue_id, &symbol);
+        self.gaps
+            .record_skew(self.venue_id, &symbol, order.stamps.skew_nanos());
         self.archive_order(&order, outcome.traded_qty);
     }
 
@@ -682,6 +684,13 @@ impl BookSession {
                     .expect("book exists")
                     .apply_delta(&delta);
                 self.remember(&delta);
+                if from_live {
+                    // Only live messages: a replayed one carries the stamp from
+                    // when it first arrived, so counting it again would weight
+                    // the distribution towards whatever happened to be buffered.
+                    self.gaps
+                        .record_skew(self.venue_id, &symbol, delta.stamps.skew_nanos());
+                }
                 self.absorb_outcome(&symbol, outcome, at, actions);
                 self.archive_delta(&delta, from_live);
             }
@@ -709,6 +718,11 @@ impl BookSession {
                     self.mark_suspect(&symbol, cause_for(&verdict), at, actions);
                 } else if from_live {
                     self.gaps.record_applied(self.venue_id, &symbol);
+                    // Only live messages. A replayed one carries the stamp from
+                    // when it first arrived, so counting it again would weight
+                    // the distribution towards whatever was buffered.
+                    self.gaps
+                        .record_skew(self.venue_id, &symbol, delta.stamps.skew_nanos());
                 }
                 self.absorb_outcome(&symbol, outcome, at, actions);
                 self.archive_delta(&delta, from_live);
