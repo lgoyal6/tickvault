@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2024"
 description = "Python bindings for tickvault: full-depth crypto order book archives"
 license = "MIT OR Apache-2.0"
+# Ships to PyPI as a wheel, never to crates.io: a cdylib named for its Python
+# module is of no use to a Rust dependant.
+publish = false
 
 [lib]
 # Imported as `tickvault._native`. The Python-facing package in `python/` wraps
