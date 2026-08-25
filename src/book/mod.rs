@@ -2,6 +2,7 @@
 
 pub mod checksum;
 pub mod l3;
+pub mod replay;
 
 use std::collections::BTreeMap;
 use std::fmt;

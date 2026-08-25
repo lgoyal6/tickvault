@@ -15,6 +15,7 @@
 //! - [`gap`] suspect windows and the report they feed
 //! - [`session`] the ingest loop that ties them together
 //! - [`store`] the Parquet archive, its manifest, and crash recovery
+//! - [`reconstruct`] rebuilding a book at an arbitrary instant
 
 pub mod book;
 pub mod clock;
@@ -23,6 +24,7 @@ pub mod fixed;
 pub mod gap;
 pub mod limits;
 pub mod pipeline;
+pub mod reconstruct;
 pub mod recorder;
 pub mod sequence;
 pub mod session;
