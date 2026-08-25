@@ -309,6 +309,24 @@ enum Command {
         #[arg(long)]
         dry_run: bool,
     },
+    /// Apply a retention window to an archive.
+    ///
+    /// What it removes is recorded in the manifest as a retention, which is a
+    /// different thing from a truncation: one is data we chose to stop keeping
+    /// on a stated policy, the other is data we lost.
+    Retention {
+        #[arg(long)]
+        archive: String,
+        /// Drop files whose newest row is older than this many days.
+        #[arg(long)]
+        max_age_days: Option<u32>,
+        /// Drop the oldest files until the archive fits in this many bytes.
+        #[arg(long)]
+        max_bytes: Option<u64>,
+        /// Say what would go, and remove nothing.
+        #[arg(long)]
+        dry_run: bool,
+    },
     /// Copy an archive, re-encoding every file with a different codec.
     ///
     /// zstd ships hand-written amd64 assembly and cannot be compiled to wasm at
@@ -1304,6 +1322,47 @@ async fn main() -> Result<()> {
             });
             tickvault::supervise::serve(config, clock, Arc::clone(&health), shutdown).await?;
             println!("stopped");
+        }
+        Command::Retention {
+            archive,
+            max_age_days,
+            max_bytes,
+            dry_run,
+        } => {
+            let policy = tickvault::store::retention::Policy {
+                max_age_days,
+                max_bytes,
+            };
+            if policy.is_unbounded() {
+                bail!("give --max-age-days or --max-bytes, or there is no policy to apply");
+            }
+            println!("policy: {}", policy.describe());
+            let now = MonotonicClock::new().stamp().wall_nanos;
+            if dry_run {
+                let reader = ArchiveReader::open(&archive)?;
+                let doomed = tickvault::store::retention::select(reader.files(), policy, now);
+                if doomed.is_empty() {
+                    println!("nothing to remove");
+                } else {
+                    for f in &doomed {
+                        println!(
+                            "  would remove {} ({} rows, {:.2} MB)",
+                            f.path,
+                            f.rows,
+                            f.bytes as f64 / 1e6
+                        );
+                    }
+                }
+            } else {
+                let removed = tickvault::store::retention::enforce(&archive, policy, now)?;
+                println!("{removed}");
+                if let Some(oldest) = removed.oldest_kept_wall {
+                    println!(
+                        "oldest kept: {}",
+                        tickvault::clock::format_rfc3339_nanos(oldest)
+                    );
+                }
+            }
         }
         Command::Transcode {
             archive,

@@ -111,12 +111,32 @@ pub struct CompactionRecord {
     pub at_wall: i64,
 }
 
+/// Files removed on purpose, because they aged out of the retention window.
+///
+/// A separate kind from a truncation for the reason the whole project exists.
+/// A truncation is data we lost and cannot account for; this is data we chose
+/// to stop keeping, on a stated policy, at a known time. A consumer that could
+/// not tell those apart would have to treat every retention as a possible
+/// failure, which would make the gap report useless.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RetentionRecord {
+    pub removed: Vec<String>,
+    /// Why: aged past the window, or over the byte budget.
+    pub reason: String,
+    /// The policy in force, so the record explains itself later.
+    pub policy: String,
+    pub rows_removed: u64,
+    pub bytes_removed: u64,
+    pub at_wall: i64,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "lowercase")]
 pub enum ManifestEntry {
     File(FileRecord),
     Truncation(TruncationRecord),
     Compaction(CompactionRecord),
+    Retention(RetentionRecord),
 }
 
 /// An append-only index of everything the archive is prepared to stand behind.
@@ -125,9 +145,12 @@ pub struct Manifest {
     path: PathBuf,
     files: Vec<FileRecord>,
     truncations: Vec<TruncationRecord>,
-    /// Paths superseded by compaction. Kept so recovery neither adopts them
-    /// back nor mistakes a leftover for something worth keeping.
+    /// Paths superseded by compaction or removed by retention. Kept so recovery
+    /// neither adopts them back nor mistakes a leftover for something worth
+    /// keeping.
     retired: BTreeSet<String>,
+    /// What retention has removed, so a short archive can explain itself.
+    retentions: Vec<RetentionRecord>,
 }
 
 impl Manifest {
@@ -143,6 +166,7 @@ impl Manifest {
         let path = root.join(MANIFEST_FILE);
         let mut files = Vec::new();
         let mut truncations = Vec::new();
+        let mut retentions: Vec<RetentionRecord> = Vec::new();
         let mut retired: BTreeSet<String> = BTreeSet::new();
 
         if path.exists() {
@@ -158,6 +182,12 @@ impl Manifest {
                     Ok(ManifestEntry::Compaction(c)) => {
                         retired.extend(c.retired.iter().cloned());
                         files.push(c.produced);
+                    }
+                    Ok(ManifestEntry::Retention(r)) => {
+                        // Retired for a different reason, but retired all the
+                        // same: these files are no longer part of the archive.
+                        retired.extend(r.removed.iter().cloned());
+                        retentions.push(r);
                     }
                     Err(e) if i + 1 == lines.len() => {
                         // Torn final line: the process died mid-append.
@@ -185,6 +215,7 @@ impl Manifest {
             files,
             truncations,
             retired,
+            retentions,
         })
     }
 
@@ -212,6 +243,15 @@ impl Manifest {
     }
 
     /// Paths superseded by compaction, whose bytes may still be on disk.
+    /// What retention has removed from this archive, newest last.
+    ///
+    /// The difference between an archive that starts on the third of the month
+    /// because that is the policy, and one that starts there because something
+    /// went wrong.
+    pub fn retentions(&self) -> &[RetentionRecord] {
+        &self.retentions
+    }
+
     pub fn retired_paths(&self) -> &BTreeSet<String> {
         &self.retired
     }
@@ -252,6 +292,15 @@ impl Manifest {
     }
 
     /// Swap many files for one, atomically. Durable before it returns.
+    /// Note files removed because they aged out, and forget them.
+    pub fn record_retention(&mut self, record: RetentionRecord) -> Result<()> {
+        self.append(&ManifestEntry::Retention(record.clone()))?;
+        self.retired.extend(record.removed.iter().cloned());
+        self.files.retain(|f| !self.retired.contains(&f.path));
+        self.retentions.push(record);
+        Ok(())
+    }
+
     pub fn record_compaction(&mut self, record: CompactionRecord) -> Result<()> {
         self.append(&ManifestEntry::Compaction(record.clone()))?;
         self.retired.extend(record.retired.iter().cloned());

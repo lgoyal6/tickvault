@@ -285,6 +285,34 @@ arrived.** A feed that is connected and silent looks identical to a healthy one
 in every other number, which is exactly how three of them went unnoticed for an
 hour.
 
+## A stated retention window
+
+Measured across six venues: about **31 MB an hour**, which is 270 GB a year. A
+recorder meant to run continuously cannot simply grow until the disk fills, and
+a full disk is not a graceful failure: the writer starts erroring and the cause
+is a decision nobody made.
+
+```toml
+[retention]
+max_age_days = 30
+max_bytes = 50_000_000_000
+```
+
+```bash
+tickvault retention --archive ./archive --max-age-days 30 --dry-run
+```
+
+**Removed is not lost, and the manifest says which.** A file dropped by
+retention is recorded as a retention entry carrying the policy that removed it
+and when. That is a different kind of entry from a truncation, which is data we
+could not account for. Somebody looking at an archive that begins on the third
+of the month can tell "that is the window" from "something went wrong before
+then", and without that distinction every retention would have to be treated as
+a possible failure.
+
+A file is judged by its newest row, so it survives until everything inside it
+has aged out rather than because it happened to start early.
+
 ## The viewer
 
 The archive is the product, and a Parquet file shows a visitor nothing. So the
@@ -430,6 +458,10 @@ cargo run --release -- replay  --archive ./archive --venue kraken --symbol BTC-U
   re-snapshot if the venue was merely quiet. Waiting instead costs the data.
 - **Bybit's REST cross-check is geo-blocked** from a US address. Its websocket
   is fine, so recording works and the out-of-band comparison does not.
+- **Retention is not free.** Dropping a partition's oldest file can drop the
+  snapshot the deltas after it were applied to. Reconstruction then reports its
+  origin as the first archived row rather than a venue snapshot, so the loss is
+  visible rather than silent, but it is still a loss.
 - **A crash still costs a bounded window**, not zero. The manifest names it, and
   the raw tape is a separate line-durable record that could be reprocessed to
   fill it, but that reprocessing is not built.

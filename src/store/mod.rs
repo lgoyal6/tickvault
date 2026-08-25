@@ -11,6 +11,8 @@ pub mod manifest;
 pub mod reader;
 #[cfg(feature = "record")]
 pub mod recovery;
+#[cfg(feature = "record")]
+pub mod retention;
 pub mod rows;
 pub mod schema;
 pub mod writer;

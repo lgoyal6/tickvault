@@ -63,6 +63,16 @@ pub struct Config {
     #[serde(default)]
     pub status: Option<StatusConfig>,
 
+    /// How much history to keep. Absent means unbounded, which is a choice
+    /// worth making on purpose: measured across six venues, about 31 MB an
+    /// hour, which is 270 GB a year.
+    #[serde(default)]
+    pub retention: crate::store::retention::Policy,
+
+    /// How often to apply it.
+    #[serde(default = "default_retention_secs")]
+    pub retention_interval_secs: u64,
+
     /// One entry per venue. Order does not matter; duplicates are rejected.
     #[serde(rename = "venue", default)]
     pub venues: Vec<VenueEntry>,
@@ -111,6 +121,10 @@ fn default_queue() -> usize {
 
 fn default_restart_secs() -> u64 {
     5
+}
+
+fn default_retention_secs() -> u64 {
+    3_600
 }
 
 fn default_listen() -> String {
@@ -175,6 +189,10 @@ impl Config {
 
     pub fn restart_delay(&self) -> Duration {
         Duration::from_secs(self.restart_secs)
+    }
+
+    pub fn retention_interval(&self) -> Duration {
+        Duration::from_secs(self.retention_interval_secs.max(1))
     }
 }
 
