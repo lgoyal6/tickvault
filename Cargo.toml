@@ -8,6 +8,25 @@ members = ["bindings"]
 name = "tickvault"
 version = "0.1.0"
 edition = "2024"
+description = "Full-depth crypto order book recorder and archive that publishes its own gap statistics"
+# Dual, matching LICENSE-MIT and LICENSE-APACHE and the published wheel's
+# metadata. The Rust convention, and changing it here would contradict both.
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/lgoyal6/tickvault"
+homepage = "https://lgoyal6.github.io/tickvault/"
+documentation = "https://docs.rs/tickvault"
+readme = "README.md"
+keywords = ["orderbook", "crypto", "market-data", "parquet", "arrow"]
+categories = ["data-structures", "science", "command-line-utilities"]
+# The demo page's dataset and its compiled wasm are 5.6 MB of the repository and
+# are of no use to anyone depending on this crate.
+exclude = [
+    "docs/data/**",
+    "docs/pkg/**",
+    "viewer/**",
+    ".github/**",
+    "scripts/**",
+]
 
 [features]
 default = ["record"]
