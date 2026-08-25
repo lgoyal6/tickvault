@@ -21,6 +21,7 @@ pub mod error;
 pub mod fixed;
 pub mod gap;
 pub mod limits;
+pub mod pipeline;
 pub mod recorder;
 pub mod sequence;
 pub mod store;
