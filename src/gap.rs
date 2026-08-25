@@ -104,6 +104,12 @@ pub struct DetectionLimit {
 pub struct SymbolStats {
     pub messages: u64,
     pub applied: u64,
+    /// How far behind the venue's own timestamp each message arrived.
+    ///
+    /// Recorded per row already; summarised here so the dataset can say what
+    /// the distribution is rather than only what one message was. This is what
+    /// tells a consumer how far to trust the timestamps.
+    pub skew: crate::latency::Histogram,
     /// Messages that arrived but could not be validated either way.
     pub unverifiable: u64,
     pub sequence_gaps: u64,
@@ -421,6 +427,16 @@ impl GapLog {
         self.entry(venue, symbol).applied += 1;
     }
 
+    /// Note how late one message was against the venue's own clock.
+    ///
+    /// Only where the venue stamps its messages at all. A venue that does not
+    /// gets no distribution rather than a distribution of zeros.
+    pub fn record_skew(&mut self, venue: VenueId, symbol: &Symbol, skew_nanos: Option<i64>) {
+        if let Some(skew) = skew_nanos {
+            self.entry(venue, symbol).skew.record(skew);
+        }
+    }
+
     /// Open a suspect window, or extend the one already open.
     pub fn open_window(&mut self, venue: VenueId, symbol: &Symbol, cause: SuspectCause, at: Stamp) {
         let key = (venue, symbol.clone());
@@ -621,6 +637,69 @@ impl fmt::Display for GapReport {
                 pct(s.verified_fraction()),
                 pct(s.clean_fraction())
             )?;
+        }
+        let stamped: Vec<&SymbolReport> = self
+            .rows
+            .iter()
+            .filter(|r| !r.stats.skew.is_empty())
+            .collect();
+        if !stamped.is_empty() {
+            writeln!(
+                f,
+                "\nvenue timestamp to receipt, milliseconds (p50 / p99 / max):"
+            )?;
+            writeln!(
+                f,
+                "  a difference between two clocks, which is latency only as far as ours is right"
+            )?;
+            for row in stamped {
+                let h = &row.stats.skew;
+                // A venue whose clock runs ahead of ours produces negative
+                // skew. Saying so is more useful than a distribution that
+                // quietly excludes it.
+                let ahead = if h.negative() > 0 {
+                    format!(", {} arrived stamped ahead of our clock", h.negative())
+                } else {
+                    String::new()
+                };
+                writeln!(
+                    f,
+                    "  {:<11} {:<10} {:>22}   over {} stamped{}",
+                    row.venue.as_str(),
+                    row.symbol.as_str(),
+                    h.summary_millis(),
+                    h.count(),
+                    ahead
+                )?;
+            }
+            // Venues do not conspire. If they all read early, the common term
+            // is this host, and saying so turns a confusing number into an
+            // actionable one. Measured while writing this: every venue's median
+            // was tens of milliseconds negative, and `sntp` put the local clock
+            // 130ms behind.
+            let medians: Vec<i64> = self
+                .rows
+                .iter()
+                .filter_map(|r| r.stats.skew.p50())
+                .collect();
+            if medians.len() > 1 && medians.iter().all(|m| *m < 0) {
+                writeln!(
+                    f,
+                    "  every venue reads early, so the clock that is wrong is most likely this one"
+                )?;
+            }
+        }
+        let unstamped: Vec<&SymbolReport> = self
+            .rows
+            .iter()
+            .filter(|r| r.stats.skew.is_empty() && r.stats.messages > 0)
+            .collect();
+        if !unstamped.is_empty() {
+            // No distribution rather than a distribution of zeros.
+            writeln!(f, "\nno venue timestamp to compare against:")?;
+            for row in unstamped {
+                writeln!(f, "  {} {}", row.venue.as_str(), row.symbol.as_str())?;
+            }
         }
         if !self.limits.is_empty() {
             writeln!(f, "\nknown blind spots:")?;

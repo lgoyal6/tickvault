@@ -88,6 +88,36 @@ CRC32. The algorithm is pinned to a captured frame as a regression test, so a
 refactor that breaks it fails immediately rather than producing a dataset that
 blames Kraken for our arithmetic.
 
+## How late the data is, and whose clock is wrong
+
+Every row already carried the gap between the venue's own timestamp and when the
+message reached us. Nothing summarised it, so the dataset could tell you the
+skew of one message and nothing about the distribution, which is the thing that
+says how far to trust the timestamps:
+
+```
+venue timestamp to receipt, milliseconds (p50 / p99 / max):
+  a difference between two clocks, which is latency only as far as ours is right
+  kraken      BTC-USD    -46.14 / 25.17 / 52.20   over 815 stamped, 753 arrived stamped ahead of our clock
+  kraken      ETH-USD    -50.33 / 37.75 / 72.71   over 1025 stamped, 925 arrived stamped ahead of our clock
+  every venue reads early, so the clock that is wrong is most likely this one
+```
+
+That last line is the point. **All six venues read early**, and venues do not
+conspire, so the common term is the recorder. `sntp` confirmed it: the host was
+130ms behind. The number is a difference between two clocks and only becomes a
+latency once ours is disciplined, so it says so rather than being labelled
+latency and believed.
+
+Writing this found two bugs in the reporting of it. A quantile taken over the
+positive values alone reported a median of **+31ms** for a feed whose real
+median was **below zero**, because ninety three percent of its observations were
+negative and were being excluded from the denominator. And on a venue where
+every observation was negative, p99 came out above the maximum, because negating
+a bucket floor moves the answer towards zero. Both are now properties the tests
+assert: quantiles span the whole signed distribution, and none may fall outside
+the observed range.
+
 ## The honesty rules
 
 1. **On a detected gap, stop applying and rebuild from a snapshot.** Never

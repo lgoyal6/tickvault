@@ -30,6 +30,7 @@ pub mod config;
 pub mod error;
 pub mod fixed;
 pub mod gap;
+pub mod latency;
 pub mod limits;
 #[cfg(feature = "record")]
 pub mod pipeline;
