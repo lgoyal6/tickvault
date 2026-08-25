@@ -21,8 +21,14 @@ categories = ["data-structures", "science", "command-line-utilities"]
 # The demo page's dataset and its compiled wasm are 5.6 MB of the repository and
 # are of no use to anyone depending on this crate.
 exclude = [
+    # The demo page and everything it needs. Shipping the HTML without the wasm
+    # and the dataset would be shipping a page that cannot load.
     "docs/data/**",
     "docs/pkg/**",
+    "docs/index.html",
+    "docs/app.js",
+    "docs/style.css",
+    "docs/.nojekyll",
     "viewer/**",
     ".github/**",
     "scripts/**",
