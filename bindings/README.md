@@ -12,6 +12,9 @@ statistics on the front page.
 pip install tickvault
 ```
 
+Not published yet. Until the first release tag, build it from a checkout of the
+repository with `cd bindings && maturin develop --release`.
+
 ## Ten lines to a plot
 
 ```python

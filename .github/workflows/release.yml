@@ -1,0 +1,89 @@
+name: release
+
+# Tag driven. `git tag v0.1.0 && git push --tags` builds wheels for every
+# platform and publishes them, so the README's `pip install tickvault` stops
+# being a claim about something that does not exist.
+on:
+  push:
+    tags: ['v*']
+  # Buildable on demand too, so the wheels can be checked without claiming a
+  # version on PyPI.
+  workflow_dispatch:
+
+jobs:
+  wheels:
+    name: wheel (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # One wheel per platform covers every Python from 3.9 up, because the
+      # extension is built against the stable ABI. Without that it would be a
+      # wheel per platform per interpreter version.
+      - name: build
+        uses: PyO3/maturin-action@v1
+        with:
+          command: build
+          args: --release --out dist --manifest-path bindings/Cargo.toml
+          manylinux: auto
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.os }}
+          path: dist
+
+  sdist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist --manifest-path bindings/Cargo.toml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist
+
+  # Checks the wheel actually installs and works before anything is published.
+  # A release that ships a broken wheel is worse than no release.
+  verify:
+    needs: [wheels]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: wheels-ubuntu-latest
+          path: dist
+      # The Python tests replay committed tapes through this binary, so they
+      # need it built and never need a live venue.
+      - run: cargo build --release --bin tickvault
+      - run: pip install pytest pyarrow polars pandas matplotlib
+      - run: pip install --no-index --find-links dist tickvault
+      - working-directory: bindings
+        run: pytest tests -q
+
+  publish:
+    needs: [wheels, sdist, verify]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    environment: pypi
+    # Trusted publishing: PyPI verifies this workflow rather than a long-lived
+    # token living in the repo's secrets.
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: pypa/gh-action-pypi-publish@release/v1

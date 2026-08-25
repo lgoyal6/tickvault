@@ -32,7 +32,7 @@ with the coverage grid beside it saying which windows are trustworthy.
 
 ```bash
 cargo run --release -- record --venue kraken --seconds 60 --archive ./archive
-pip install tickvault
+cargo run --release -- serve  --config tickvault.toml    # every venue, supervised
 ```
 
 ## Six venues, five validation schemes
@@ -376,7 +376,15 @@ snapshot.
 ## From Python
 
 Almost nobody doing a backtest wants to learn Rust to read a Parquet file, so
-the query and replay layers are also a package. One wheel covers Python 3.9 up.
+the query and replay layers are also a package. One wheel per platform covers
+Python 3.9 up, because the extension is built against the stable ABI.
+
+Not on PyPI yet. Tagging a release builds and verifies the wheels and publishes
+them; until that tag exists, build it from the checkout:
+
+```bash
+cd bindings && maturin develop --release
+```
 
 ```python
 import tickvault
@@ -498,6 +506,9 @@ cargo run --release -- replay  --archive ./archive --venue kraken --symbol BTC-U
 - **The viewer skips checkpoints.** It replays from the partition's opening
   snapshot rather than selecting files, which is fine for minutes and would not
   be for a day.
+- **Not on PyPI or crates.io yet.** The release workflow builds wheels for
+  three platforms and verifies one installs and passes the suite before
+  publishing, but no version tag exists, so today it is a build from source.
 - **No dataset is published yet.** The continuous validation service, the
   alerting, and the automated daily publish are the remaining phase.
 
