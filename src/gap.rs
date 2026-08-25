@@ -939,3 +939,92 @@ mod tests {
         assert!(kraken.windows.is_empty());
     }
 }
+
+/// What one bucket of a coverage grid is allowed to claim.
+///
+/// Three states rather than two, because collapsing them is exactly the
+/// dishonesty this project exists to avoid. "No data" and "data we cannot
+/// check" and "data we checked" are different claims, and a grid that painted
+/// the middle one green would be making the strongest claim about the weakest
+/// evidence.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CoverageState {
+    /// Nothing was recorded here.
+    Absent,
+    /// Recorded, and the recorder marked some of it as not vouched for.
+    Suspect,
+    /// Recorded and checked against what the venue publishes to check with.
+    Clean,
+    /// Recorded, nothing looks wrong, and the venue publishes nothing that
+    /// could tell us if it were. Never upgraded to clean.
+    Unverifiable,
+}
+
+impl CoverageState {
+    /// Classify one bucket.
+    ///
+    /// `verifiable` comes from the venue's capability matrix, not from whether
+    /// this particular window happened to look fine.
+    pub fn classify(messages: u64, suspect_rows: u64, verifiable: bool) -> Self {
+        if messages == 0 {
+            CoverageState::Absent
+        } else if suspect_rows > 0 {
+            CoverageState::Suspect
+        } else if verifiable {
+            CoverageState::Clean
+        } else {
+            CoverageState::Unverifiable
+        }
+    }
+
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            CoverageState::Absent => "absent",
+            CoverageState::Suspect => "suspect",
+            CoverageState::Clean => "clean",
+            CoverageState::Unverifiable => "unverifiable",
+        }
+    }
+}
+
+#[cfg(test)]
+mod coverage_state_tests {
+    use super::CoverageState;
+
+    #[test]
+    fn a_venue_that_cannot_detect_loss_is_never_reported_clean() {
+        // The whole headline. Bitstamp's aggregated feed carries no sequence
+        // number and no checksum, so a quiet window there is not evidence of
+        // anything, and a grid that painted it the same green as Kraken would
+        // be the exact lie the dataset is meant to avoid.
+        for messages in [1, 1_000, u64::MAX] {
+            assert_eq!(
+                CoverageState::classify(messages, 0, false),
+                CoverageState::Unverifiable
+            );
+        }
+    }
+
+    #[test]
+    fn a_marked_window_outranks_everything() {
+        // Suspect wins even where the venue could otherwise prove cleanliness,
+        // and even where it could not prove anything at all.
+        assert_eq!(CoverageState::classify(10, 1, true), CoverageState::Suspect);
+        assert_eq!(
+            CoverageState::classify(10, 1, false),
+            CoverageState::Suspect
+        );
+    }
+
+    #[test]
+    fn nothing_recorded_is_absent_rather_than_clean() {
+        assert_eq!(CoverageState::classify(0, 0, true), CoverageState::Absent);
+        assert_eq!(CoverageState::classify(0, 0, false), CoverageState::Absent);
+    }
+
+    #[test]
+    fn only_a_checked_window_on_a_checkable_venue_is_clean() {
+        assert_eq!(CoverageState::classify(1, 0, true), CoverageState::Clean);
+    }
+}
