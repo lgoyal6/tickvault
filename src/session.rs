@@ -1059,8 +1059,25 @@ pub async fn run_connection(
         Frame(Result<Option<RawFrame>>),
         Keepalive,
         ArchiveFlush,
+        Idle,
         Deadline,
     }
+
+    /// How long a feed may say nothing before we treat the socket as dead.
+    ///
+    /// A server that stops sending without closing the connection leaves the
+    /// TCP session ESTABLISHED and the reader waiting forever. Measured on a
+    /// three hour capture: Bitstamp went silent and the recorder sat on a live
+    /// socket at zero CPU for sixty two minutes, writing nothing. That is the
+    /// worst failure this project can have, because the archive ends up with no
+    /// rows and the gap report has nothing to report: it reads as a quiet
+    /// market rather than as a lost feed.
+    ///
+    /// Sixty seconds is far longer than any venue in the matrix stays quiet on
+    /// a major pair, and a genuinely quiet feed is indistinguishable from a dead
+    /// one from here. Reconnecting costs a re-snapshot and is recorded as
+    /// downtime; sitting there costs the data and says nothing.
+    const IDLE_TIMEOUT: Duration = Duration::from_secs(60);
 
     'outer: loop {
         if deadline.is_some_and(|d| tokio::time::Instant::now() >= d) {
@@ -1119,6 +1136,10 @@ pub async fn run_connection(
         }
         backoff.reset();
 
+        // Per connection, so a reconnect starts the silence clock fresh rather
+        // than inheriting however long the dead one had been quiet.
+        let mut last_frame_at = tokio::time::Instant::now();
+
         let mut archive_flush = sinks.archive.as_ref().map(|_| {
             let mut interval = tokio::time::interval(sinks.archive_flush_interval);
             interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
@@ -1143,6 +1164,7 @@ pub async fn run_connection(
             let wake = tokio::select! {
                 biased;
                 result = transport.recv() => Wake::Frame(result),
+                _ = tokio::time::sleep_until(last_frame_at + IDLE_TIMEOUT) => Wake::Idle,
                 _ = async {
                     match keepalive.as_mut() {
                         Some(ticker) => { ticker.tick().await; }
@@ -1165,6 +1187,18 @@ pub async fn run_connection(
 
             let next = match wake {
                 Wake::Deadline => break 'outer,
+                Wake::Idle => {
+                    tracing::warn!(
+                        venue = %venue.id(), ?IDLE_TIMEOUT,
+                        "feed went silent on a live socket, reconnecting"
+                    );
+                    // Recorded as downtime we noticed, not as a clean window.
+                    session.on_disconnect(clock.stamp());
+                    reconnects += 1;
+                    let delay = backoff.next(clock.as_ref());
+                    tokio::time::sleep(delay).await;
+                    continue 'outer;
+                }
                 Wake::Keepalive => {
                     if let Keepalive::Text { payload, .. } = caps.keepalive {
                         // A missed heartbeat gets the socket closed, which then
@@ -1187,6 +1221,7 @@ pub async fn run_connection(
             match next {
                 Ok(Some(frame)) => {
                     frames += 1;
+                    last_frame_at = tokio::time::Instant::now();
                     if let Some(rec) = recorder.as_ref() {
                         rec.lock().await.record(&frame).await?;
                     }

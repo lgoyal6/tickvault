@@ -54,3 +54,6 @@ required-features = ["record"]
 [dev-dependencies]
 rand = "0.10.2"
 tempfile = "3.27.0"
+# test-util for paused time: the idle-feed gate waits out minutes of silence,
+# and doing that in real seconds would be a ten minute test.
+tokio = { version = "1.53.1", features = ["test-util"] }
