@@ -1,0 +1,6 @@
+/target
+
+# Python build artefacts from the bindings.
+__pycache__/
+*.so
+.pytest_cache/
