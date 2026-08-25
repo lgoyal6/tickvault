@@ -26,9 +26,9 @@ classifiers = [
 dependencies = ["pyarrow>=14"]
 
 [project.urls]
-Homepage = "https://github.com/lakshgoyal/tickvault"
-Documentation = "https://github.com/lakshgoyal/tickvault/blob/main/docs/schema.md"
-Issues = "https://github.com/lakshgoyal/tickvault/issues"
+Homepage = "https://github.com/lgoyal6/tickvault"
+Documentation = "https://github.com/lgoyal6/tickvault/blob/main/docs/schema.md"
+Issues = "https://github.com/lgoyal6/tickvault/issues"
 
 [project.optional-dependencies]
 polars = ["polars>=0.20"]
