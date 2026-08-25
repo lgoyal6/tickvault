@@ -9,8 +9,13 @@ quietly poison a backtest. This reads the archives produced by
 statistics on the front page.
 
 ```bash
-pip install tickvault
+pip install tickvault-ob
 ```
+
+`tickvault-ob` on PyPI, `tickvault` when you import it. The plain name
+normalises to `tick-vault` under PEP 503, and that belongs to an unrelated
+Dukascopy tick downloader, so the distribution carries a suffix and the import
+does not.
 
 Not published yet. Until the first release tag, build it from a checkout of the
 repository with `cd bindings && maturin develop --release`.

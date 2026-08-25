@@ -3,20 +3,19 @@
 Almost nobody doing a backtest wants to learn Rust to read a Parquet file. This
 is the same query and replay code the recorder runs, exposed as a package.
 
-Not on PyPI yet. Tagging a release builds wheels for every platform, verifies
-one of them actually installs and passes the suite, and publishes; until that
-tag exists, build it from a checkout:
-
 ```bash
-cd bindings && maturin develop --release
+pip install tickvault-ob
+pip install 'tickvault-ob[polars,plot]'   # optional: dataframes and the depth chart
 ```
 
-Once published:
+`tickvault-ob` on PyPI, `tickvault` when you import it. The plain name
+normalises to `tick-vault` under PEP 503, and that belongs to an unrelated
+Dukascopy tick downloader, so the distribution carries a suffix and the import
+does not.
 
-```bash
-pip install tickvault
-pip install 'tickvault[polars,plot]'   # optional: dataframes and the depth chart
-```
+Not published yet. Tagging a release builds wheels for every platform, verifies
+one of them installs and passes the suite, then publishes. Until that tag
+exists, build it from a checkout with `cd bindings && maturin develop --release`.
 
 One wheel per platform covers every Python from 3.9 up. The extension is built
 against the stable ABI, so a new Python release does not leave you compiling

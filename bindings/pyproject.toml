@@ -3,7 +3,12 @@ requires = ["maturin>=1.5,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "tickvault"
+# The distribution name differs from the import name on purpose. `tickvault`
+# normalises to `tick-vault` under PEP 503, and that is taken on PyPI by an
+# unrelated Dukascopy tick downloader. Renaming the whole project to dodge a
+# collision was the alternative; this keeps `import tickvault` intact, which is
+# the name that appears in every snippet.
+name = "tickvault-ob"
 version = "0.1.0"
 description = "Full-depth crypto order book archives, honest about their own gaps"
 readme = "README.md"
