@@ -27,6 +27,7 @@ its front page.**
 
 ```bash
 cargo run --release -- record --venue kraken --seconds 60 --archive ./archive
+pip install tickvault
 ```
 
 ## Six venues, five validation schemes
@@ -207,6 +208,36 @@ files the manifest never listed, discards abandoned compactions, and records the
 truncation point. The gate kills the process with a real `SIGKILL` at randomized
 offsets during sustained write, restarts, and asserts every file reads back.
 
+## From Python
+
+Almost nobody doing a backtest wants to learn Rust to read a Parquet file, so
+the query and replay layers are also a package. One wheel covers Python 3.9 up.
+
+```python
+import tickvault
+
+archive = tickvault.open("./archive")
+bars = archive.bars("kraken", "BTC-USD", bar_seconds=60, frame="polars")
+print(bars.select("start", "open", "high", "low", "close", "volume"))
+
+start, end = archive.span_ns("kraken", "BTC-USD")
+book = archive.book_at("kraken", "BTC-USD", end)
+print(book.mid, book.spread, book.imbalance(depth=10))
+
+archive.plot_book("kraken", "BTC-USD", end, show=True)
+```
+
+That is the whole distance from install to a plot, and a test executes exactly
+that block against a real archive on every commit, so it cannot rot into an
+example that no longer works.
+
+It is the same code the recorder runs, not a reimplementation, so the same rules
+hold. `volume` is `None` rather than zero on the five venues that publish
+aggregated levels. `book.suspect` is true when the recorder could not vouch for
+the window, and `plot_book` writes it on the chart. Prices arrive as floats for
+convenience and as exact 1e-9 integers through `to_arrow()`, which hands Arrow
+buffers to polars without a copy. Details in [`docs/python.md`](docs/python.md).
+
 ## Architecture
 
 | module | what it holds |
@@ -226,6 +257,7 @@ offsets during sustained write, restarts, and asserts every file reads back.
 | `store` | Parquet schema, writer, manifest, recovery, reader, compaction |
 | `reconstruct` | rebuild a book at an instant, with checkpoints |
 | `query` | streaming cursor, aggregations, and paced replay |
+| `bindings` | the pyo3 crate and the Python package built on it |
 
 Blast radius follows the capability matrix. Because Coinbase numbers the socket
 rather than the instrument, packing symbols onto one connection means a single
@@ -234,15 +266,23 @@ symbol, so it packs them. `tickvault plan` shows the reasoning.
 
 Further reading: [`docs/venues.md`](docs/venues.md) for the per-venue findings,
 [`docs/schema.md`](docs/schema.md) for the columns,
-[`docs/reconstruction.md`](docs/reconstruction.md) and
-[`docs/querying.md`](docs/querying.md).
+[`docs/reconstruction.md`](docs/reconstruction.md),
+[`docs/querying.md`](docs/querying.md), [`docs/python.md`](docs/python.md).
 
 ## Build and test
 
 ```bash
 cargo test                     # 300 tests
 cargo test -- --ignored        # real SIGKILLs and live venue reconciliation
+
+cd bindings
+maturin develop --release
+pytest tests                   # 44 tests, built from tapes so they need no network
 ```
+
+The Python tests replay committed tapes through the real ingest path into a
+byte-identical archive, so they need neither a live venue nor a Parquet blob
+checked into git.
 
 ```bash
 cargo run --release -- capabilities        # what each venue can prove
@@ -278,8 +318,6 @@ cargo run --release -- replay  --archive ./archive --venue kraken --symbol BTC-U
   fill it, but that reprocessing is not built.
 - **Blocking and dropping both cost something** once the disk is the
   bottleneck, and above roughly 2.4M rows/s one of them will happen.
-- **No Python bindings yet**, which is the single highest-adoption gap: almost
-  nobody doing a backtest wants to learn Rust to read a Parquet file.
 - **No dataset is published yet.** The continuous validation service, the
   alerting, and the automated daily publish are the remaining phase.
 
