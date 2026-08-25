@@ -1,3 +1,9 @@
+[workspace]
+# The bindings are a separate crate so the core stays a plain library: a
+# `cdylib` in the main package would drag a Python ABI into every build of the
+# recorder.
+members = ["bindings"]
+
 [package]
 name = "tickvault"
 version = "0.1.0"
