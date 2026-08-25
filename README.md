@@ -379,12 +379,17 @@ Almost nobody doing a backtest wants to learn Rust to read a Parquet file, so
 the query and replay layers are also a package. One wheel per platform covers
 Python 3.9 up, because the extension is built against the stable ABI.
 
-Not on PyPI yet. Tagging a release builds and verifies the wheels and publishes
-them; until that tag exists, build it from the checkout:
-
 ```bash
-cd bindings && maturin develop --release
+pip install tickvault-ob
 ```
+
+`tickvault-ob` on PyPI, `tickvault` when you import it. The plain name
+normalises to `tick-vault` under PEP 503, and that belongs to an unrelated
+Dukascopy tick downloader, so the distribution carries a suffix and the import
+does not.
+
+Not published yet; tagging a release builds, verifies and publishes the wheels.
+Until then, `cd bindings && maturin develop --release`.
 
 ```python
 import tickvault
@@ -509,6 +514,9 @@ cargo run --release -- replay  --archive ./archive --venue kraken --symbol BTC-U
 - **Not on PyPI or crates.io yet.** The release workflow builds wheels for
   three platforms and verifies one installs and passes the suite before
   publishing, but no version tag exists, so today it is a build from source.
+- **The package installs under a different name than it imports.** `tickvault`
+  normalises to `tick-vault`, which is taken by an unrelated tick downloader, so
+  the distribution is `tickvault-ob` and the import stays `tickvault`.
 - **No dataset is published yet.** The continuous validation service, the
   alerting, and the automated daily publish are the remaining phase.
 
