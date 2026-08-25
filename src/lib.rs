@@ -11,11 +11,13 @@
 //! - [`fixed`] exact decimals, because checksum validation cannot survive floats
 //! - [`book`] the L2 book, its crossed-book invariant, and Kraken's CRC32
 //! - [`sequence`] five per-venue loss detectors, and what each cannot prove
+//! - [`gap`] suspect windows and the report they feed
 
 pub mod book;
 pub mod clock;
 pub mod error;
 pub mod fixed;
+pub mod gap;
 pub mod sequence;
 pub mod symbols;
 pub mod types;
