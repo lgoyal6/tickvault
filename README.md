@@ -25,6 +25,11 @@ its front page.**
 > counted, and the venues that cannot be checked at all are published as 0%
 > verified rather than rounded up to look like the rest.
 
+**Live demo:** [lgoyal6.github.io/tickvault](https://lgoyal6.github.io/tickvault/),
+the real reconstruction engine compiled to WebAssembly. Pick a venue, drag to any
+instant, and watch the order book rebuild from the archive message by message,
+with the coverage grid beside it saying which windows are trustworthy.
+
 ```bash
 cargo run --release -- record --venue kraken --seconds 60 --archive ./archive
 pip install tickvault
@@ -208,6 +213,39 @@ files the manifest never listed, discards abandoned compactions, and records the
 truncation point. The gate kills the process with a real `SIGKILL` at randomized
 offsets during sustained write, restarts, and asserts every file reads back.
 
+## The viewer
+
+The archive is the product, and a Parquet file shows a visitor nothing. So the
+reconstruction layer, which is the hardest part of this and otherwise entirely
+invisible, runs in the browser:
+
+```bash
+scripts/build-viewer.sh                     # wasm into docs/
+python3 -m http.server -d docs 8000
+```
+
+It is the real engine. `viewer/` compiles the same `BookReplayer` the recorder
+and the query layer use to `wasm32-unknown-unknown`, hands it archived rows, and
+draws what comes back. Five tests hold the browser to the library: the final
+book must match the digest the recorder held, every prefix must match a fresh
+replay of that prefix, and scrubbing backwards must land where scrubbing
+forwards did.
+
+Two constraints the browser imposed on the library, both worth having anyway.
+Capture now sits behind a default `record` feature, so the read half compiles
+without tokio, a TLS stack or a C compression codec; and the rule for where one
+message ends is public rather than buried in the file reader, so a second
+consumer cannot get it subtly wrong.
+
+The archive shipped with the page is transcoded to snappy, because zstd ships
+hand-written amd64 assembly and cannot target wasm at all:
+
+```bash
+cargo run --release -- transcode --archive ./archive --out ./snappy --compression snappy
+cargo run --release -- coverage --archive ./snappy --bucket-secs 300 --out coverage.json
+scripts/make-demo-data.py ./snappy docs/data
+```
+
 ## From Python
 
 Almost nobody doing a backtest wants to learn Rust to read a Parquet file, so
@@ -238,6 +276,7 @@ the window, and `plot_book` writes it on the chart. Prices arrive as floats for
 convenience and as exact 1e-9 integers through `to_arrow()`, which hands Arrow
 buffers to polars without a copy. Details in [`docs/python.md`](docs/python.md).
 
+
 ## Architecture
 
 | module | what it holds |
@@ -258,6 +297,7 @@ buffers to polars without a copy. Details in [`docs/python.md`](docs/python.md).
 | `reconstruct` | rebuild a book at an instant, with checkpoints |
 | `query` | streaming cursor, aggregations, and paced replay |
 | `bindings` | the pyo3 crate and the Python package built on it |
+| `viewer` | the same engine compiled to wasm, behind the demo page |
 
 Blast radius follows the capability matrix. Because Coinbase numbers the socket
 rather than the instrument, packing symbols onto one connection means a single
@@ -272,7 +312,7 @@ Further reading: [`docs/venues.md`](docs/venues.md) for the per-venue findings,
 ## Build and test
 
 ```bash
-cargo test                     # 300 tests
+cargo test                     # 308 tests
 cargo test -- --ignored        # real SIGKILLs and live venue reconciliation
 
 cd bindings
@@ -318,6 +358,11 @@ cargo run --release -- replay  --archive ./archive --venue kraken --symbol BTC-U
   fill it, but that reprocessing is not built.
 - **Blocking and dropping both cost something** once the disk is the
   bottleneck, and above roughly 2.4M rows/s one of them will happen.
+- **The demo ships five minutes per venue, not the dataset.** Enough for a
+  browser to fetch and rebuild; the archive itself belongs on Hugging Face.
+- **The viewer skips checkpoints.** It replays from the partition's opening
+  snapshot rather than selecting files, which is fine for minutes and would not
+  be for a day.
 - **No dataset is published yet.** The continuous validation service, the
   alerting, and the automated daily publish are the remaining phase.
 
