@@ -15,6 +15,11 @@ if [ -d /opt/homebrew/opt/rustup/bin ]; then
   export PATH="/opt/homebrew/opt/rustup/bin:$PATH"
 fi
 
+# Panic messages from dependencies embed the absolute path of whatever machine
+# built them, so without this the shipped wasm carries the builder's home
+# directory. Remapping also makes the artefact reproducible across machines.
+export RUSTFLAGS="${RUSTFLAGS:-} --remap-path-prefix=$HOME=~ --remap-path-prefix=$here=."
+
 wasm-pack build --target web --release --out-dir pkg
 rm -f pkg/.gitignore
 

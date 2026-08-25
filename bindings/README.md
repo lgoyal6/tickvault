@@ -5,7 +5,7 @@ Full-depth crypto order book archives, honest about their own gaps.
 There is no good free source of full-depth crypto order book history. Everything
 free is top-of-book, resampled to bars, or carries undocumented gaps that
 quietly poison a backtest. This reads the archives produced by
-[tickvault](https://github.com/lakshgoyal/tickvault), which publish their gap
+[tickvault](https://github.com/lgoyal6/tickvault), which publish their gap
 statistics on the front page.
 
 ```bash
