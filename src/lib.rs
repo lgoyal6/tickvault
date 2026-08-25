@@ -16,6 +16,7 @@
 //! - [`session`] the ingest loop that ties them together
 //! - [`store`] the Parquet archive, its manifest, and crash recovery
 //! - [`reconstruct`] rebuilding a book at an arbitrary instant
+//! - [`query`] streaming reads, aggregations, and paced replay
 
 pub mod book;
 pub mod clock;
@@ -24,6 +25,7 @@ pub mod fixed;
 pub mod gap;
 pub mod limits;
 pub mod pipeline;
+pub mod query;
 pub mod reconstruct;
 pub mod recorder;
 pub mod sequence;
