@@ -953,6 +953,8 @@ pub struct RunSinks {
     pub archive: Option<Arc<crate::pipeline::Pipeline>>,
     /// Rows to accumulate per partition before handing a batch over.
     pub archive_batch_rows: usize,
+    /// Where to publish live progress, for anything watching this run.
+    pub progress: Option<Arc<dyn ProgressSink>>,
     /// Hand over whatever has accumulated at least this often.
     ///
     /// Without this the crash bound is not the file rotation interval, it is
@@ -976,6 +978,7 @@ impl RunSinks {
         RunSinks {
             tape: None,
             archive: None,
+            progress: None,
             archive_batch_rows: 4_096,
             archive_flush_interval: Duration::from_secs(1),
         }
@@ -983,6 +986,11 @@ impl RunSinks {
 
     pub fn with_archive(mut self, pipeline: Arc<crate::pipeline::Pipeline>) -> Self {
         self.archive = Some(pipeline);
+        self
+    }
+
+    pub fn with_progress(mut self, sink: Arc<dyn ProgressSink>) -> Self {
+        self.progress = Some(sink);
         self
     }
 }
@@ -1008,6 +1016,32 @@ impl StopAfter {
             ..Default::default()
         }
     }
+}
+
+/// A live look at a run that has not finished yet.
+///
+/// The gap report is only printed when a process exits, which is fine for a
+/// thirty second capture and useless for a service. A silent feed went
+/// unnoticed for an hour because the only way to ask how things were going was
+/// to stop and see. This is the answer to that question, asked while running.
+#[derive(Debug, Clone)]
+pub struct RunSnapshot {
+    pub venue: VenueId,
+    /// Frames received on this connection so far.
+    pub frames: u64,
+    pub reconnects: u32,
+    /// Receipt time of the most recent frame, in wall nanoseconds.
+    ///
+    /// The important field. A feed that is up but silent looks identical to a
+    /// healthy one in every other number here, and this is what gives it away.
+    pub last_frame_wall: Option<i64>,
+    /// The report as it stands, with suspect windows still open.
+    pub report: GapReport,
+}
+
+/// Somewhere to publish a snapshot to, periodically, while a run is going.
+pub trait ProgressSink: Send + Sync {
+    fn update(&self, snapshot: RunSnapshot);
 }
 
 /// What a recording run produced.
@@ -1049,6 +1083,9 @@ pub async fn run_connection(
     let mut backoff = Backoff::default();
     let mut frames: u64 = 0;
     let mut reconnects: u32 = 0;
+    // Deliberately outside the connection loop. "When did anything last arrive"
+    // is the question a watcher asks, and reconnecting does not answer it.
+    let mut last_frame_wall: Option<i64> = None;
     let started = tokio::time::Instant::now();
     let caps = venue.capabilities().clone();
     let mut limiter = VenueLimiter::new(&caps.budget);
@@ -1140,7 +1177,9 @@ pub async fn run_connection(
         // than inheriting however long the dead one had been quiet.
         let mut last_frame_at = tokio::time::Instant::now();
 
-        let mut archive_flush = sinks.archive.as_ref().map(|_| {
+        // Also runs with no archive attached: a watcher still needs the tick,
+        // and a run that publishes nothing is exactly the run worth watching.
+        let mut archive_flush = (sinks.archive.is_some() || sinks.progress.is_some()).then(|| {
             let mut interval = tokio::time::interval(sinks.archive_flush_interval);
             interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
             interval
@@ -1192,6 +1231,14 @@ pub async fn run_connection(
                         venue = %venue.id(), ?IDLE_TIMEOUT,
                         "feed went silent on a live socket, reconnecting"
                     );
+                    publish(
+                        &sinks,
+                        &venue,
+                        &session,
+                        frames,
+                        reconnects,
+                        last_frame_wall,
+                    );
                     // Recorded as downtime we noticed, not as a clean window.
                     session.on_disconnect(clock.stamp());
                     reconnects += 1;
@@ -1211,6 +1258,14 @@ pub async fn run_connection(
                 Wake::ArchiveFlush => {
                     // Whatever has accumulated goes to the writer now, so a
                     // quiet venue's rows are not held in memory indefinitely.
+                    publish(
+                        &sinks,
+                        &venue,
+                        &session,
+                        frames,
+                        reconnects,
+                        last_frame_wall,
+                    );
                     let pending = session.flush_archive();
                     drain_to_archive(&mut session, &sinks, pending, clock.stamp()).await;
                     continue;
@@ -1222,6 +1277,7 @@ pub async fn run_connection(
                 Ok(Some(frame)) => {
                     frames += 1;
                     last_frame_at = tokio::time::Instant::now();
+                    last_frame_wall = Some(frame.stamp.wall_nanos);
                     if let Some(rec) = recorder.as_ref() {
                         rec.lock().await.record(&frame).await?;
                     }
@@ -1332,6 +1388,30 @@ pub async fn run_connection(
 
 /// Hand accumulated batches to the writer, recording anything it could not take.
 ///
+/// Hand a watcher the state of a run in progress.
+///
+/// Cheap enough for the flush tick: the report is rebuilt from counters the
+/// session already keeps, and nothing here touches the book.
+fn publish(
+    sinks: &RunSinks,
+    venue: &Arc<dyn Venue>,
+    session: &BookSession,
+    frames: u64,
+    reconnects: u32,
+    last_frame_wall: Option<i64>,
+) {
+    let Some(sink) = sinks.progress.as_ref() else {
+        return;
+    };
+    sink.update(RunSnapshot {
+        venue: venue.id(),
+        frames,
+        reconnects,
+        last_frame_wall,
+        report: session.report(),
+    });
+}
+
 /// A drop here is a hole in the archive that we caused rather than the venue,
 /// and it is written into the same gap report so it cannot be mistaken for
 /// clean data.
