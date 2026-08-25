@@ -220,6 +220,41 @@ files the manifest never listed, discards abandoned compactions, and records the
 truncation point. The gate kills the process with a real `SIGKILL` at randomized
 offsets during sustained write, restarts, and asserts every file reads back.
 
+## Running it as a service
+
+`record` captures one venue for a fixed time and prints a report when it stops.
+That is a tool. This is the service:
+
+```bash
+cp tickvault.example.toml tickvault.toml
+tickvault serve --config tickvault.toml --dry-run   # check it
+tickvault serve --config tickvault.toml             # run it
+```
+
+One process, every venue in the file, each with its own archive and its own
+restart loop so one failing venue cannot stall the rest. Ctrl-C closes the open
+Parquet files before exiting, which matters more than it sounds: a file is
+buffered whole in memory, so a process that simply dies loses everything since
+the last rotation. Measured on a run with a ten minute rotation: forty seconds
+in, nothing on disk and twenty seven thousand rows in memory; after the signal,
+four files, all verifying.
+
+And it answers for itself while it runs, which is the part that was missing:
+
+```
+$ curl -s localhost:8080/
+venue          frames last frame    reconn  restarts  state
+kraken           4075   0.7s ago         0         0  ok
+okx               426   0.6s ago         0         0  ok
+bitstamp        11031   0.3s ago         0         0  ok
+```
+
+`/healthz` returns 503 naming any venue that is down or has gone quiet, and
+`/metrics` is Prometheus text. **The field that matters is when a frame last
+arrived.** A feed that is connected and silent looks identical to a healthy one
+in every other number, which is exactly how three of them went unnoticed for an
+hour.
+
 ## The viewer
 
 The archive is the product, and a Parquet file shows a visitor nothing. So the

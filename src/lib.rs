@@ -25,6 +25,8 @@
 
 pub mod book;
 pub mod clock;
+#[cfg(feature = "record")]
+pub mod config;
 pub mod error;
 pub mod fixed;
 pub mod gap;
@@ -38,7 +40,11 @@ pub mod recorder;
 pub mod sequence;
 #[cfg(feature = "record")]
 pub mod session;
+#[cfg(feature = "record")]
+pub mod status;
 pub mod store;
+#[cfg(feature = "record")]
+pub mod supervise;
 pub mod symbols;
 #[cfg(feature = "record")]
 pub mod transport;

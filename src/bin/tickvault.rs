@@ -296,6 +296,19 @@ enum Command {
         #[arg(long)]
         venue: Option<VenueId>,
     },
+    /// Record every venue in a config file, in one process, until stopped.
+    ///
+    /// The difference between a tool and a service. `record` captures one venue
+    /// for a fixed time and prints a report when it stops; this keeps every
+    /// configured venue running, restarts one that fails, and answers for its
+    /// own health while it does.
+    Serve {
+        #[arg(long, default_value = "tickvault.toml")]
+        config: String,
+        /// Check the config and print what would run, then exit.
+        #[arg(long)]
+        dry_run: bool,
+    },
     /// Copy an archive, re-encoding every file with a different codec.
     ///
     /// zstd ships hand-written amd64 assembly and cannot be compiled to wasm at
@@ -1235,6 +1248,63 @@ async fn main() -> Result<()> {
             }
         }
 
+        Command::Serve { config, dry_run } => {
+            let config = tickvault::config::Config::read(&config)?;
+            println!(
+                "archive {} | backpressure {} | rotate {}s | queue {}",
+                config.archive.display(),
+                config.backpressure,
+                config.rotate_secs,
+                config.queue
+            );
+            for entry in &config.venues {
+                let resolved = entry.resolve()?;
+                println!(
+                    "  {:<11} {:?} -> {}",
+                    entry.name.to_string(),
+                    resolved
+                        .symbols
+                        .iter()
+                        .map(|s| s.to_string())
+                        .collect::<Vec<_>>(),
+                    config.archive_for(entry.name).display()
+                );
+            }
+            match &config.status {
+                Some(status) => println!("  status on http://{}", status.listen),
+                None => println!("  no status service configured"),
+            }
+            if dry_run {
+                return Ok(());
+            }
+
+            let clock: Arc<dyn Clock> = Arc::new(MonotonicClock::new());
+            let health = Arc::new(tickvault::supervise::Health::default());
+
+            if let Some(status) = config.status.clone() {
+                let health = Arc::clone(&health);
+                let clock = Arc::clone(&clock);
+                tokio::spawn(async move {
+                    if let Err(e) = tickvault::status::serve(&status.listen, health, clock).await {
+                        tracing::error!(error = %e, "status service stopped");
+                    }
+                });
+            }
+
+            // Ctrl-C has to reach the writers rather than the process. An open
+            // Parquet file is buffered whole in memory, so exiting without
+            // closing it loses everything since the last rotation. The signal
+            // asks the supervisor to stop, and the supervisor drains.
+            let (stop, shutdown) = tokio::sync::watch::channel(false);
+            tokio::spawn(async move {
+                if tokio::signal::ctrl_c().await.is_ok() {
+                    println!("\nstopping, closing open files");
+                    let _ = stop.send(true);
+                }
+            });
+            tickvault::supervise::serve(config, clock, Arc::clone(&health), shutdown).await?;
+            println!("stopped");
+        }
         Command::Transcode {
             archive,
             out,
