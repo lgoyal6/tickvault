@@ -247,10 +247,12 @@ The archive shipped with the page is transcoded to snappy, because zstd ships
 hand-written amd64 assembly and cannot target wasm at all:
 
 ```bash
-cargo run --release -- transcode --archive ./archive --out ./snappy --compression snappy
-cargo run --release -- coverage --archive ./snappy --bucket-secs 300 --out coverage.json
-scripts/make-demo-data.py ./snappy docs/data
+scripts/refresh-demo-data.sh ~/path/to/recording
 ```
+
+which transcodes, generates the coverage grid over the whole recording rather
+than over the slice that ships, and cuts the slice starting at the opening
+snapshot.
 
 ## From Python
 
