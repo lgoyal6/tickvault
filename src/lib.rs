@@ -10,11 +10,13 @@
 //!
 //! - [`fixed`] exact decimals, because checksum validation cannot survive floats
 //! - [`book`] the L2 book, its crossed-book invariant, and Kraken's CRC32
+//! - [`sequence`] five per-venue loss detectors, and what each cannot prove
 
 pub mod book;
 pub mod clock;
 pub mod error;
 pub mod fixed;
+pub mod sequence;
 pub mod types;
 
 pub use clock::{Clock, ManualClock, MonotonicClock, Stamp, Timestamps};
