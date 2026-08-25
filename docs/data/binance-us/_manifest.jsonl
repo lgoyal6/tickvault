@@ -1,0 +1,1 @@
+{"kind": "file", "path": "venue=binance-us/symbol=BTC-USDT/date=2026-08-25/part-1787637355193065875-0000.parquet", "venue": "binance-us", "symbol": "BTC-USDT", "date": "2026-08-25", "book_level": "l2", "feed_depth": null, "rows": 7187, "bytes": 124817, "first_recv_wall": 1787637355193065875, "last_recv_wall": 1787637606455511792, "closed_wall": 1787637606455511792}

@@ -1,0 +1,94 @@
+{
+  "partitions": [
+    {
+      "venue": "binance-us",
+      "symbol": "BTC-USDT",
+      "date": "2026-08-25",
+      "book_level": 2,
+      "feed_depth": null,
+      "files": [
+        "venue=binance-us/symbol=BTC-USDT/date=2026-08-25/part-1787637355193065875-0000.parquet"
+      ],
+      "rows": 7187,
+      "first_ns": "1787637355193065875",
+      "last_ns": "1787637606455511792",
+      "bytes": 124817,
+      "seconds": 251.3
+    },
+    {
+      "venue": "bitstamp",
+      "symbol": "BTC-USD",
+      "date": "2026-08-25",
+      "book_level": 2,
+      "feed_depth": null,
+      "files": [
+        "venue=bitstamp/symbol=BTC-USD/date=2026-08-25/part-1787637358288785208-0000.parquet"
+      ],
+      "rows": 26131,
+      "first_ns": "1787637358288785208",
+      "last_ns": "1787637658099776666",
+      "bytes": 276159,
+      "seconds": 299.8
+    },
+    {
+      "venue": "bybit",
+      "symbol": "BTC-USDT",
+      "date": "2026-08-25",
+      "book_level": 2,
+      "feed_depth": 50,
+      "files": [
+        "venue=bybit/symbol=BTC-USDT/date=2026-08-25/part-1787637354762284125-0000.parquet"
+      ],
+      "rows": 38092,
+      "first_ns": "1787637354762284125",
+      "last_ns": "1787637655540314584",
+      "bytes": 684987,
+      "seconds": 300.8
+    },
+    {
+      "venue": "coinbase",
+      "symbol": "BTC-USD",
+      "date": "2026-08-25",
+      "book_level": 2,
+      "feed_depth": null,
+      "files": [
+        "venue=coinbase/symbol=BTC-USD/date=2026-08-25/part-1787637356715735750-0000.parquet"
+      ],
+      "rows": 135935,
+      "first_ns": "1787637356715735750",
+      "last_ns": "1787637656526668333",
+      "bytes": 1585557,
+      "seconds": 299.8
+    },
+    {
+      "venue": "kraken",
+      "symbol": "BTC-USD",
+      "date": "2026-08-25",
+      "book_level": 2,
+      "feed_depth": 10,
+      "files": [
+        "venue=kraken/symbol=BTC-USD/date=2026-08-25/part-1787637356351189292-0000.parquet"
+      ],
+      "rows": 16643,
+      "first_ns": "1787637356351189292",
+      "last_ns": "1787637656954913417",
+      "bytes": 631552,
+      "seconds": 300.6
+    },
+    {
+      "venue": "okx",
+      "symbol": "BTC-USDT",
+      "date": "2026-08-25",
+      "book_level": 2,
+      "feed_depth": 400,
+      "files": [
+        "venue=okx/symbol=BTC-USDT/date=2026-08-25/part-1787637354945811709-0000.parquet"
+      ],
+      "rows": 76102,
+      "first_ns": "1787637354945811709",
+      "last_ns": "1787637655334899500",
+      "bytes": 585413,
+      "seconds": 300.4
+    }
+  ]
+}
