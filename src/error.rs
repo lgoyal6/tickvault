@@ -20,9 +20,11 @@ pub enum Error {
     #[error("decimal error: {0}")]
     Decimal(#[from] crate::fixed::ParseFixedError),
 
+    #[cfg(feature = "record")]
     #[error("websocket error: {0}")]
     WebSocket(#[from] tokio_tungstenite::tungstenite::Error),
 
+    #[cfg(feature = "record")]
     #[error("http error: {0}")]
     Http(#[from] reqwest::Error),
 
@@ -70,10 +72,19 @@ impl Error {
     /// True when reconnecting is a plausible response. A schema mismatch is
     /// not: reconnecting into the same bad parse just spins.
     pub fn is_transient(&self) -> bool {
-        matches!(
-            self,
-            Error::Io(_) | Error::WebSocket(_) | Error::Http(_) | Error::FeedClosed { .. }
-        )
+        #[cfg(feature = "record")]
+        {
+            matches!(
+                self,
+                Error::Io(_) | Error::WebSocket(_) | Error::Http(_) | Error::FeedClosed { .. }
+            )
+        }
+        // Without the capture half there is no socket to reconnect, so the
+        // transport-shaped variants do not exist to match on.
+        #[cfg(not(feature = "record"))]
+        {
+            matches!(self, Error::Io(_) | Error::FeedClosed { .. })
+        }
     }
 }
 

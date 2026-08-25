@@ -17,6 +17,11 @@
 //! - [`store`] the Parquet archive, its manifest, and crash recovery
 //! - [`reconstruct`] rebuilding a book at an arbitrary instant
 //! - [`query`] streaming reads, aggregations, and paced replay
+//!
+//! Reading an archive needs none of the capture half, so `venue`, `transport`,
+//! `session`, `recorder` and `pipeline` sit behind the default `record`
+//! feature. Turning it off leaves the book, the archive, reconstruction and
+//! queries, which is exactly the subset that compiles to wasm for the viewer.
 
 pub mod book;
 pub mod clock;
@@ -24,16 +29,21 @@ pub mod error;
 pub mod fixed;
 pub mod gap;
 pub mod limits;
+#[cfg(feature = "record")]
 pub mod pipeline;
 pub mod query;
 pub mod reconstruct;
+#[cfg(feature = "record")]
 pub mod recorder;
 pub mod sequence;
+#[cfg(feature = "record")]
 pub mod session;
 pub mod store;
 pub mod symbols;
+#[cfg(feature = "record")]
 pub mod transport;
 pub mod types;
+#[cfg(feature = "record")]
 pub mod venue;
 
 pub use clock::{Clock, ManualClock, MonotonicClock, Stamp, Timestamps};

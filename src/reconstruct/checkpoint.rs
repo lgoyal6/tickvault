@@ -18,13 +18,17 @@
 
 use std::path::{Path, PathBuf};
 
+#[cfg(feature = "record")]
+use crate::book::BookSnapshot;
+use crate::book::L2Book;
 use crate::book::l3::{L3Book, OrderId};
-use crate::book::{BookSnapshot, L2Book};
 use crate::clock::{Stamp, Timestamps, format_utc_date};
 use crate::error::{Error, Result};
 use crate::fixed::Fixed;
 use crate::store::reader::read_batches;
+#[cfg(feature = "record")]
 use crate::store::schema::RowBuilder;
+#[cfg(feature = "record")]
 use crate::store::writer::WriterConfig;
 use crate::types::{BookLevel, Side, Symbol, VenueId};
 
@@ -101,10 +105,14 @@ impl Checkpoint {
         self.bids.len() + self.asks.len()
     }
 
+    /// Both of these name where a checkpoint *would be written*, so they go
+    /// with the writer rather than with the reader, which is handed a path.
+    #[cfg(feature = "record")]
     fn dir(&self) -> PathBuf {
         checkpoint_dir(self.venue, &self.symbol, self.at_wall)
     }
 
+    #[cfg(feature = "record")]
     fn file_name(&self) -> String {
         // Zero padded so a lexical sort is a time sort.
         format!("ckpt-{:020}.parquet", self.at_wall.max(0))
@@ -119,6 +127,10 @@ fn checkpoint_dir(venue: VenueId, symbol: &Symbol, at_wall: i64) -> PathBuf {
 }
 
 /// Write a checkpoint, returning its path relative to the archive root.
+///
+/// Behind `record`: writing needs a compression codec, and reading a checkpoint
+/// back does not.
+#[cfg(feature = "record")]
 pub fn write(root: impl AsRef<Path>, checkpoint: &Checkpoint) -> Result<PathBuf> {
     let root = root.as_ref();
     let relative = checkpoint.dir().join(checkpoint.file_name());
