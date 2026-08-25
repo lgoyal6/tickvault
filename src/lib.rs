@@ -11,6 +11,7 @@
 //! - [`fixed`] exact decimals, because checksum validation cannot survive floats
 //! - [`book`] the L2 book, its crossed-book invariant, and Kraken's CRC32
 //! - [`sequence`] five per-venue loss detectors, and what each cannot prove
+//! - [`venue`] the [`venue::Venue`] trait, six implementations, the capabilities
 //! - [`gap`] suspect windows and the report they feed
 
 pub mod book;
@@ -19,9 +20,12 @@ pub mod error;
 pub mod fixed;
 pub mod gap;
 pub mod limits;
+pub mod recorder;
 pub mod sequence;
 pub mod symbols;
+pub mod transport;
 pub mod types;
+pub mod venue;
 
 pub use clock::{Clock, ManualClock, MonotonicClock, Stamp, Timestamps};
 pub use error::{Error, Result};
