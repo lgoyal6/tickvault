@@ -38,21 +38,34 @@
 //! rather than assuming anything unlisted is broken. A crash before 2 leaves a
 //! `.partial`, which can never be read and is quarantined.
 
-use std::collections::BTreeMap;
-use std::fs::File;
-use std::path::{Path, PathBuf};
+#[cfg(feature = "record")]
+use std::path::Path;
+use std::path::PathBuf;
 use std::time::Duration;
 
-use arrow::array::RecordBatch;
-use parquet::arrow::ArrowWriter;
-use parquet::basic::{Compression, ZstdLevel};
-use parquet::file::properties::WriterProperties;
-
 use crate::clock::format_utc_date;
-use crate::error::{Error, Result};
-use crate::store::manifest::{FileRecord, Manifest};
-use crate::store::schema::{RowBuilder, book_schema};
 use crate::types::{Symbol, VenueId};
+
+// Only the writing half needs any of this. A read-only build has no Arrow
+// writer, no compression codec and no manifest to append to.
+#[cfg(feature = "record")]
+use crate::error::{Error, Result};
+#[cfg(feature = "record")]
+use crate::store::manifest::{FileRecord, Manifest};
+#[cfg(feature = "record")]
+use crate::store::schema::{RowBuilder, book_schema};
+#[cfg(feature = "record")]
+use arrow::array::RecordBatch;
+#[cfg(feature = "record")]
+use parquet::arrow::ArrowWriter;
+#[cfg(feature = "record")]
+use parquet::basic::{Compression, ZstdLevel};
+#[cfg(feature = "record")]
+use parquet::file::properties::WriterProperties;
+#[cfg(feature = "record")]
+use std::collections::BTreeMap;
+#[cfg(feature = "record")]
+use std::fs::File;
 
 /// Suffix a file carries until its footer is written and it is renamed.
 pub const PARTIAL_SUFFIX: &str = ".partial";
@@ -149,6 +162,7 @@ impl PartitionKey {
     }
 }
 
+#[cfg(feature = "record")]
 struct OpenFile {
     writer: ArrowWriter<File>,
     partial: PathBuf,
@@ -160,6 +174,7 @@ struct OpenFile {
     opened_mono: std::time::Instant,
 }
 
+#[cfg(feature = "record")]
 /// Writes book rows into a partitioned Parquet archive.
 ///
 /// Synchronous by design. It is driven from a dedicated thread on the far side
@@ -174,6 +189,7 @@ pub struct ArchiveWriter {
     files_closed: u64,
 }
 
+#[cfg(feature = "record")]
 impl ArchiveWriter {
     pub fn open(config: WriterConfig) -> Result<Self> {
         std::fs::create_dir_all(&config.root)?;

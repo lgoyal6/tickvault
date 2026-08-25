@@ -10,7 +10,9 @@
 
 use std::time::Duration;
 
+#[cfg(feature = "record")]
 use crate::error::Result;
+#[cfg(feature = "record")]
 use crate::query::{BookCursor, Tick};
 
 /// How fast to replay.
@@ -70,6 +72,11 @@ impl ReplayStats {
 ///
 /// Async because pacing means sleeping, and sleeping on the runtime is the only
 /// way to do that without blocking everything else on it.
+///
+/// Behind `record` for that reason. A caller without a runtime, the browser
+/// being the one that matters here, drives [`BookCursor`] directly and paces
+/// itself against its own clock.
+#[cfg(feature = "record")]
 pub async fn replay<F>(cursor: &mut BookCursor, speed: Speed, mut f: F) -> Result<ReplayStats>
 where
     F: FnMut(&Tick, &mut BookCursor) -> Result<()>,
