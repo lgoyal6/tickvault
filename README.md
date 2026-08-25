@@ -169,6 +169,12 @@ because a gate asserted a property rather than an output.
   setting, corrupting for order-by-order.
 - **The writer deadlocked on shutdown**, because a ticker task held a strong
   sender clone so aborting it never released the channel.
+- **A feed that went silent was never noticed.** Found on a three hour capture:
+  Bitstamp stopped sending without closing the connection, so the socket stayed
+  ESTABLISHED and the reader waited on it at zero CPU for sixty two minutes.
+  That is the worst failure here, because the archive ends up with no rows and
+  the gap report has nothing to say, so a lost feed reads as a quiet market.
+  There is now an idle timeout, and the silence is recorded as downtime.
 
 ## Order by order
 
@@ -312,7 +318,7 @@ Further reading: [`docs/venues.md`](docs/venues.md) for the per-venue findings,
 ## Build and test
 
 ```bash
-cargo test                     # 308 tests
+cargo test                     # 310 tests
 cargo test -- --ignored        # real SIGKILLs and live venue reconciliation
 
 cd bindings
@@ -351,6 +357,9 @@ cargo run --release -- replay  --archive ./archive --venue kraken --symbol BTC-U
   on cannot report an observed queue position until they empty.
 - **A loss at the very end of a recording is undetectable.** Nothing follows it
   to reveal the absence.
+- **A quiet feed and a dead one are indistinguishable from here.** After sixty
+  seconds of silence the recorder reconnects and records downtime, which costs a
+  re-snapshot if the venue was merely quiet. Waiting instead costs the data.
 - **Bybit's REST cross-check is geo-blocked** from a US address. Its websocket
   is fine, so recording works and the out-of-band comparison does not.
 - **A crash still costs a bounded window**, not zero. The manifest names it, and
