@@ -296,6 +296,22 @@ enum Command {
         #[arg(long)]
         venue: Option<VenueId>,
     },
+    /// Emit per-venue coverage over time as JSON.
+    ///
+    /// This is the gap report bucketed by wall clock, which is what the
+    /// published dataset leads with and what the viewer's heatmap draws.
+    Coverage {
+        /// Repeatable. One archive per venue is how a multi-venue recording
+        /// actually lands on disk, since six writers cannot share a manifest.
+        #[arg(long, required = true)]
+        archive: Vec<String>,
+        /// Bucket width in seconds.
+        #[arg(long, default_value_t = 300)]
+        bucket_secs: i64,
+        /// Write here instead of standard output.
+        #[arg(long)]
+        out: Option<String>,
+    },
     /// Show how symbols would be spread across sockets, and why.
     Plan {
         #[command(flatten)]
@@ -463,6 +479,143 @@ async fn submit_all(
             }
         }
     }
+}
+
+/// Bucket an archive's own record of itself into a coverage grid.
+///
+/// Nothing here is computed for the demo. `suspect` is the verdict the recorder
+/// reached live, against whatever that venue gave it to validate with, and it
+/// was written into every row at capture time. This only counts.
+///
+/// The distinction the grid has to carry is between three different things,
+/// because flattening them is exactly the dishonesty the project exists to
+/// avoid. A bucket with no rows is absent. A bucket whose rows are marked is
+/// suspect. And a bucket on a venue that publishes nothing to validate against
+/// is unverifiable, which is neither clean nor broken: there is no reason to
+/// think it is wrong and no way to know.
+fn coverage_json(archives: &[String], bucket_secs: i64) -> Result<String> {
+    use std::collections::BTreeMap;
+
+    let bucket_nanos = bucket_secs * 1_000_000_000;
+
+    // Which venues can prove anything at all, read from the capability matrix
+    // rather than restated here.
+    let clock: Arc<dyn Clock> = Arc::new(ManualClock::default());
+    let http = ReqwestFetch::shared()?;
+    let mut verifiable: BTreeMap<VenueId, bool> = BTreeMap::new();
+    for id in VenueId::ALL {
+        let config = VenueConfig {
+            symbols: vec![VenueConfig::default_symbol(*id)],
+            kraken_precision: Some(Precision { price: 1, qty: 8 }),
+            ..VenueConfig::default()
+        };
+        if let Ok(v) = registry::build_offline(*id, &config, Arc::clone(&http), Arc::clone(&clock))
+        {
+            verifiable.insert(*id, v.capabilities().can_detect_loss());
+        }
+    }
+
+    #[derive(Default)]
+    struct Bucket {
+        rows: u64,
+        suspect_rows: u64,
+        messages: u64,
+    }
+
+    struct Series {
+        venue: VenueId,
+        symbol: Symbol,
+        book_level: u8,
+        buckets: BTreeMap<i64, Bucket>,
+    }
+
+    let mut series: BTreeMap<(VenueId, String, String), Series> = BTreeMap::new();
+    let mut earliest = i64::MAX;
+    let mut latest = i64::MIN;
+
+    for archive in archives {
+        let reader = ArchiveReader::open(archive)?;
+        for record in reader.files() {
+            let key = (record.venue, record.symbol.to_string(), record.date.clone());
+            let entry = series.entry(key).or_insert_with(|| Series {
+                venue: record.venue,
+                symbol: record.symbol.clone(),
+                book_level: match record.book_level {
+                    tickvault::types::BookLevel::L3 => 3,
+                    _ => 2,
+                },
+                buckets: BTreeMap::new(),
+            });
+
+            for batch in tickvault::store::reader::read_batches(reader.path_of(record))? {
+                let rows = tickvault::store::rows::decode(&batch)?;
+                for message in tickvault::store::rows::split_messages(&rows) {
+                    let Some(first) = message.first() else {
+                        continue;
+                    };
+                    let at = first.recv_wall;
+                    earliest = earliest.min(at);
+                    latest = latest.max(at);
+                    let bucket = entry
+                        .buckets
+                        .entry(at.div_euclid(bucket_nanos) * bucket_nanos)
+                        .or_default();
+                    bucket.messages += 1;
+                    bucket.rows += message.len() as u64;
+                    bucket.suspect_rows += message.iter().filter(|r| r.suspect).count() as u64;
+                }
+            }
+        }
+    }
+
+    if series.is_empty() {
+        bail!("no files across {} archive(s)", archives.len());
+    }
+
+    // Every series spans the same grid, so an absent bucket on one venue lines
+    // up with a present one on another. That comparison is the point of putting
+    // them side by side.
+    let first_bucket = earliest.div_euclid(bucket_nanos) * bucket_nanos;
+    let last_bucket = latest.div_euclid(bucket_nanos) * bucket_nanos;
+
+    let mut out = String::from("{\n");
+    out.push_str(&format!("  \"bucket_seconds\": {bucket_secs},\n"));
+    out.push_str(&format!("  \"from_ns\": \"{first_bucket}\",\n"));
+    out.push_str(&format!(
+        "  \"to_ns\": \"{}\",\n",
+        last_bucket + bucket_nanos
+    ));
+    out.push_str("  \"series\": [\n");
+
+    let mut rendered: Vec<String> = Vec::new();
+    for s in series.values() {
+        let can_verify = verifiable.get(&s.venue).copied().unwrap_or(false) || s.book_level == 3;
+        let mut cells: Vec<String> = Vec::new();
+        let mut at = first_bucket;
+        while at <= last_bucket {
+            let b = s.buckets.get(&at);
+            let (rows, suspect, messages) = b
+                .map(|b| (b.rows, b.suspect_rows, b.messages))
+                .unwrap_or((0, 0, 0));
+            let state =
+                tickvault::gap::CoverageState::classify(messages, suspect, can_verify).as_str();
+            cells.push(format!(
+                "        {{\"at_ns\": \"{at}\", \"state\": \"{state}\", \"messages\": {messages}, \"rows\": {rows}, \"suspect_rows\": {suspect}}}"
+            ));
+            at += bucket_nanos;
+        }
+        rendered.push(format!(
+            "    {{\n      \"venue\": \"{}\",\n      \"symbol\": \"{}\",\n      \"book_level\": {},\n      \"verifiable\": {},\n      \"buckets\": [\n{}\n      ]\n    }}",
+            s.venue.as_str(),
+            s.symbol,
+            s.book_level,
+            can_verify,
+            cells.join(",\n")
+        ));
+    }
+    out.push_str(&rendered.join(",\n"));
+    out.push_str("\n  ]\n}\n");
+    Ok(out)
 }
 
 #[tokio::main]
@@ -1011,6 +1164,23 @@ async fn main() -> Result<()> {
             }
         }
 
+        Command::Coverage {
+            archive,
+            bucket_secs,
+            out,
+        } => {
+            if bucket_secs <= 0 {
+                bail!("--bucket-secs must be positive");
+            }
+            let json = coverage_json(&archive, bucket_secs)?;
+            match out {
+                Some(path) => {
+                    std::fs::write(&path, &json)?;
+                    println!("wrote {path}");
+                }
+                None => println!("{json}"),
+            }
+        }
         Command::Plan { venue: args } => {
             let config = args.resolve()?;
             let clock: Arc<dyn Clock> = Arc::new(MonotonicClock::new());
