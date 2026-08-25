@@ -20,6 +20,13 @@
 //! are declared in [`VenueCapabilities`] and read once by the session loop, so
 //! neither becomes an `if venue == ...` at the call site.
 
+pub mod binance_us;
+pub mod bitstamp;
+pub mod bybit;
+pub mod coinbase;
+pub mod kraken;
+pub mod okx;
+pub mod registry;
 
 use std::fmt;
 use std::time::Duration;
