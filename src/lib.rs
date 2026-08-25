@@ -13,6 +13,7 @@
 //! - [`sequence`] five per-venue loss detectors, and what each cannot prove
 //! - [`venue`] the [`venue::Venue`] trait, six implementations, the capabilities
 //! - [`gap`] suspect windows and the report they feed
+//! - [`store`] the Parquet archive, its manifest, and crash recovery
 
 pub mod book;
 pub mod clock;
@@ -22,6 +23,7 @@ pub mod gap;
 pub mod limits;
 pub mod recorder;
 pub mod sequence;
+pub mod store;
 pub mod symbols;
 pub mod transport;
 pub mod types;
