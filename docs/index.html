@@ -123,6 +123,22 @@
     order-by-order instead, the same venue becomes the best validated of the six,
     because every event there names its predecessor.
   </p>
+  <p>
+    <strong>The red blocks are our fault, not the venues'.</strong> Three feeds stopped
+    sending without closing the connection, so the socket stayed open, the reader
+    waited on it, and the recorder sat at zero CPU writing nothing. On Bitstamp that
+    lasted an hour. It is worth saying plainly because it is the one failure this
+    project could not previously see: every other fault ends up in the gap report,
+    while a silent socket produces an archive with no rows and a report with nothing
+    to say, so a lost feed reads as a quiet market.
+  </p>
+  <p>
+    This grid is how it was found, which is the whole argument for publishing one.
+    There is now an idle timeout that reconnects and records the silence as downtime,
+    and two tests that fail without it. The holes stay on the chart rather than being
+    re-recorded away, because a coverage grid that only ever shows good days is not
+    evidence of anything.
+  </p>
 </section>
 
 <section class="gut">
