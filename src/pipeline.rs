@@ -30,10 +30,16 @@ use crate::error::{Error, Result};
 use crate::store::writer::{ArchiveWriter, PartitionKey, WriterConfig};
 
 /// What to do when the writer cannot keep up.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+///
+/// `Block` is the default only because one of the two has to be, and blocking
+/// fails loudly: the venue disconnects and the gap report says so. Dropping
+/// fails quietly unless someone reads the drop counter.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum BackpressurePolicy {
     /// Wait for room. Risks the venue disconnecting us, which the gap report
     /// then shows as a reconnect rather than as missing rows.
+    #[default]
     Block,
     /// Discard the message rather than wait, and count it. The feed stays
     /// healthy and the archive is explicitly short of those rows.

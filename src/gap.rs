@@ -504,7 +504,7 @@ pub struct SymbolReport {
 }
 
 /// The front page: what we captured, and where we could not vouch for it.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GapReport {
     pub rows: Vec<SymbolReport>,
     pub limits: Vec<DetectionLimit>,
