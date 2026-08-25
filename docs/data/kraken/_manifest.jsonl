@@ -1,0 +1,1 @@
+{"kind": "file", "path": "venue=kraken/symbol=BTC-USD/date=2026-08-25/part-1787637356351189292-0000.parquet", "venue": "kraken", "symbol": "BTC-USD", "date": "2026-08-25", "book_level": "l2", "feed_depth": 10, "rows": 16643, "bytes": 631552, "first_recv_wall": 1787637356351189292, "last_recv_wall": 1787637656954913417, "closed_wall": 1787637656954913417}

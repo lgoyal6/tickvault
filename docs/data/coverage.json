@@ -1,0 +1,121 @@
+{
+  "bucket_seconds": 300,
+  "from_ns": "1787637300000000000",
+  "to_ns": "1787640600000000000",
+  "series": [
+    {
+      "venue": "coinbase",
+      "symbol": "BTC-USD",
+      "book_level": 2,
+      "verifiable": true,
+      "buckets": [
+        {"at_ns": "1787637300000000000", "state": "clean", "messages": 4759, "rows": 112249, "suspect_rows": 0},
+        {"at_ns": "1787637600000000000", "state": "clean", "messages": 5788, "rows": 113549, "suspect_rows": 0},
+        {"at_ns": "1787637900000000000", "state": "clean", "messages": 5779, "rows": 91712, "suspect_rows": 0},
+        {"at_ns": "1787638200000000000", "state": "clean", "messages": 5685, "rows": 84601, "suspect_rows": 0},
+        {"at_ns": "1787638500000000000", "state": "clean", "messages": 5738, "rows": 109337, "suspect_rows": 0},
+        {"at_ns": "1787638800000000000", "state": "clean", "messages": 5779, "rows": 92372, "suspect_rows": 0},
+        {"at_ns": "1787639100000000000", "state": "clean", "messages": 5345, "rows": 87508, "suspect_rows": 0},
+        {"at_ns": "1787639400000000000", "state": "clean", "messages": 6050, "rows": 138351, "suspect_rows": 0},
+        {"at_ns": "1787639700000000000", "state": "clean", "messages": 5809, "rows": 107482, "suspect_rows": 0},
+        {"at_ns": "1787640000000000000", "state": "clean", "messages": 5813, "rows": 80323, "suspect_rows": 0},
+        {"at_ns": "1787640300000000000", "state": "clean", "messages": 1258, "rows": 16260, "suspect_rows": 0}
+      ]
+    },
+    {
+      "venue": "kraken",
+      "symbol": "BTC-USD",
+      "book_level": 2,
+      "verifiable": true,
+      "buckets": [
+        {"at_ns": "1787637300000000000", "state": "clean", "messages": 7972, "rows": 11656, "suspect_rows": 0},
+        {"at_ns": "1787637600000000000", "state": "clean", "messages": 14435, "rows": 20592, "suspect_rows": 0},
+        {"at_ns": "1787637900000000000", "state": "clean", "messages": 9484, "rows": 13331, "suspect_rows": 0},
+        {"at_ns": "1787638200000000000", "state": "clean", "messages": 10029, "rows": 14597, "suspect_rows": 0},
+        {"at_ns": "1787638500000000000", "state": "clean", "messages": 10634, "rows": 14547, "suspect_rows": 0},
+        {"at_ns": "1787638800000000000", "state": "clean", "messages": 14296, "rows": 20414, "suspect_rows": 0},
+        {"at_ns": "1787639100000000000", "state": "clean", "messages": 10229, "rows": 14168, "suspect_rows": 0},
+        {"at_ns": "1787639400000000000", "state": "clean", "messages": 15131, "rows": 22354, "suspect_rows": 0},
+        {"at_ns": "1787639700000000000", "state": "clean", "messages": 12893, "rows": 18547, "suspect_rows": 0},
+        {"at_ns": "1787640000000000000", "state": "clean", "messages": 8264, "rows": 11552, "suspect_rows": 0},
+        {"at_ns": "1787640300000000000", "state": "clean", "messages": 1013, "rows": 1449, "suspect_rows": 0}
+      ]
+    },
+    {
+      "venue": "okx",
+      "symbol": "BTC-USDT",
+      "book_level": 2,
+      "verifiable": true,
+      "buckets": [
+        {"at_ns": "1787637300000000000", "state": "clean", "messages": 2461, "rows": 54891, "suspect_rows": 0},
+        {"at_ns": "1787637600000000000", "state": "clean", "messages": 3074, "rows": 95451, "suspect_rows": 0},
+        {"at_ns": "1787637900000000000", "state": "clean", "messages": 3039, "rows": 76487, "suspect_rows": 0},
+        {"at_ns": "1787638200000000000", "state": "clean", "messages": 3004, "rows": 67353, "suspect_rows": 0},
+        {"at_ns": "1787638500000000000", "state": "clean", "messages": 3071, "rows": 82627, "suspect_rows": 0},
+        {"at_ns": "1787638800000000000", "state": "clean", "messages": 3030, "rows": 77681, "suspect_rows": 0},
+        {"at_ns": "1787639100000000000", "state": "clean", "messages": 2989, "rows": 68707, "suspect_rows": 0},
+        {"at_ns": "1787639400000000000", "state": "clean", "messages": 3136, "rows": 109965, "suspect_rows": 0},
+        {"at_ns": "1787639700000000000", "state": "clean", "messages": 3058, "rows": 77287, "suspect_rows": 0},
+        {"at_ns": "1787640000000000000", "state": "clean", "messages": 3012, "rows": 58885, "suspect_rows": 0},
+        {"at_ns": "1787640300000000000", "state": "clean", "messages": 648, "rows": 12542, "suspect_rows": 0}
+      ]
+    },
+    {
+      "venue": "bybit",
+      "symbol": "BTC-USDT",
+      "book_level": 2,
+      "verifiable": true,
+      "buckets": [
+        {"at_ns": "1787637300000000000", "state": "clean", "messages": 5943, "rows": 25615, "suspect_rows": 0},
+        {"at_ns": "1787637600000000000", "state": "clean", "messages": 9314, "rows": 53177, "suspect_rows": 0},
+        {"at_ns": "1787637900000000000", "state": "clean", "messages": 8361, "rows": 41440, "suspect_rows": 0},
+        {"at_ns": "1787638200000000000", "state": "clean", "messages": 7614, "rows": 37601, "suspect_rows": 0},
+        {"at_ns": "1787638500000000000", "state": "clean", "messages": 8826, "rows": 45640, "suspect_rows": 0},
+        {"at_ns": "1787638800000000000", "state": "clean", "messages": 8451, "rows": 43932, "suspect_rows": 0},
+        {"at_ns": "1787639100000000000", "state": "clean", "messages": 6765, "rows": 32956, "suspect_rows": 0},
+        {"at_ns": "1787639400000000000", "state": "clean", "messages": 9111, "rows": 56128, "suspect_rows": 0},
+        {"at_ns": "1787639700000000000", "state": "clean", "messages": 8010, "rows": 37579, "suspect_rows": 0},
+        {"at_ns": "1787640000000000000", "state": "clean", "messages": 6560, "rows": 26867, "suspect_rows": 0},
+        {"at_ns": "1787640300000000000", "state": "clean", "messages": 1338, "rows": 5527, "suspect_rows": 0}
+      ]
+    },
+    {
+      "venue": "binance-us",
+      "symbol": "BTC-USDT",
+      "book_level": 2,
+      "verifiable": true,
+      "buckets": [
+        {"at_ns": "1787637300000000000", "state": "clean", "messages": 832, "rows": 6855, "suspect_rows": 0},
+        {"at_ns": "1787637600000000000", "state": "clean", "messages": 1350, "rows": 9322, "suspect_rows": 0},
+        {"at_ns": "1787637900000000000", "state": "clean", "messages": 1135, "rows": 7125, "suspect_rows": 0},
+        {"at_ns": "1787638200000000000", "state": "clean", "messages": 924, "rows": 5398, "suspect_rows": 0},
+        {"at_ns": "1787638500000000000", "state": "clean", "messages": 1223, "rows": 8310, "suspect_rows": 0},
+        {"at_ns": "1787638800000000000", "state": "clean", "messages": 1153, "rows": 7316, "suspect_rows": 0},
+        {"at_ns": "1787639100000000000", "state": "clean", "messages": 925, "rows": 5628, "suspect_rows": 0},
+        {"at_ns": "1787639400000000000", "state": "clean", "messages": 1586, "rows": 11248, "suspect_rows": 0},
+        {"at_ns": "1787639700000000000", "state": "clean", "messages": 1107, "rows": 6900, "suspect_rows": 0},
+        {"at_ns": "1787640000000000000", "state": "clean", "messages": 853, "rows": 4871, "suspect_rows": 0},
+        {"at_ns": "1787640300000000000", "state": "clean", "messages": 105, "rows": 678, "suspect_rows": 0}
+      ]
+    },
+    {
+      "venue": "bitstamp",
+      "symbol": "BTC-USD",
+      "book_level": 2,
+      "verifiable": false,
+      "buckets": [
+        {"at_ns": "1787637300000000000", "state": "unverifiable", "messages": 763, "rows": 20298, "suspect_rows": 0},
+        {"at_ns": "1787637600000000000", "state": "unverifiable", "messages": 936, "rows": 23813, "suspect_rows": 0},
+        {"at_ns": "1787637900000000000", "state": "unverifiable", "messages": 905, "rows": 17120, "suspect_rows": 0},
+        {"at_ns": "1787638200000000000", "state": "unverifiable", "messages": 925, "rows": 17523, "suspect_rows": 0},
+        {"at_ns": "1787638500000000000", "state": "unverifiable", "messages": 935, "rows": 23014, "suspect_rows": 0},
+        {"at_ns": "1787638800000000000", "state": "unverifiable", "messages": 935, "rows": 22862, "suspect_rows": 0},
+        {"at_ns": "1787639100000000000", "state": "unverifiable", "messages": 905, "rows": 20623, "suspect_rows": 0},
+        {"at_ns": "1787639400000000000", "state": "unverifiable", "messages": 936, "rows": 28533, "suspect_rows": 0},
+        {"at_ns": "1787639700000000000", "state": "unverifiable", "messages": 965, "rows": 23959, "suspect_rows": 0},
+        {"at_ns": "1787640000000000000", "state": "suspect", "messages": 937, "rows": 23342, "suspect_rows": 25},
+        {"at_ns": "1787640300000000000", "state": "unverifiable", "messages": 51, "rows": 1065, "suspect_rows": 0}
+      ]
+    }
+  ]
+}

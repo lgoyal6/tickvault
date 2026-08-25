@@ -1,0 +1,1 @@
+{"kind": "file", "path": "venue=okx/symbol=BTC-USDT/date=2026-08-25/part-1787637354945811709-0000.parquet", "venue": "okx", "symbol": "BTC-USDT", "date": "2026-08-25", "book_level": "l2", "feed_depth": 400, "rows": 76102, "bytes": 585413, "first_recv_wall": 1787637354945811709, "last_recv_wall": 1787637655334899500, "closed_wall": 1787637655334899500}

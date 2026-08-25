@@ -296,6 +296,21 @@ enum Command {
         #[arg(long)]
         venue: Option<VenueId>,
     },
+    /// Copy an archive, re-encoding every file with a different codec.
+    ///
+    /// zstd ships hand-written amd64 assembly and cannot be compiled to wasm at
+    /// all, so an archive meant to be read in a browser has to be snappy. The
+    /// rows are untouched: this changes how the bytes are packed, not what they
+    /// say.
+    Transcode {
+        #[arg(long)]
+        archive: String,
+        #[arg(long)]
+        out: String,
+        /// snappy or zstd.
+        #[arg(long, default_value = "snappy")]
+        compression: String,
+    },
     /// Emit per-venue coverage over time as JSON.
     ///
     /// This is the gap report bucketed by wall clock, which is what the
@@ -616,6 +631,65 @@ fn coverage_json(archives: &[String], bucket_secs: i64) -> Result<String> {
     out.push_str(&rendered.join(",\n"));
     out.push_str("\n  ]\n}\n");
     Ok(out)
+}
+
+/// Re-encode an archive under a different compression codec.
+///
+/// Reads with whatever the source used and writes with the requested codec,
+/// batch for batch, so the rows and the schema come through untouched. The
+/// manifest is rewritten because the byte counts change and nothing else does.
+fn transcode(archive: &str, out: &str, compression: &str) -> Result<(u64, usize, u64, u64)> {
+    use parquet::arrow::ArrowWriter;
+    use parquet::basic::{Compression, ZstdLevel};
+    use parquet::file::properties::WriterProperties;
+
+    let codec = match compression {
+        "snappy" => Compression::SNAPPY,
+        "zstd" => Compression::ZSTD(ZstdLevel::try_new(3).map_err(|e| anyhow::anyhow!("{e}"))?),
+        other => bail!("unknown compression {other:?}, expected snappy or zstd"),
+    };
+
+    let reader = ArchiveReader::open(archive)?;
+    let out_root = std::path::Path::new(out);
+    std::fs::create_dir_all(out_root)?;
+    let mut manifest = tickvault::store::manifest::Manifest::open(out_root)?;
+
+    let (mut rows, mut before, mut after) = (0u64, 0u64, 0u64);
+    let mut files = 0usize;
+    for record in reader.files() {
+        let batches = tickvault::store::reader::read_batches(reader.path_of(record))?;
+        let target = out_root.join(&record.path);
+        if let Some(parent) = target.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        let props = WriterProperties::builder()
+            .set_compression(codec)
+            .set_created_by(format!("tickvault {} transcode", env!("CARGO_PKG_VERSION")))
+            .build();
+        let sink = std::fs::File::create(&target)?;
+        let mut writer = ArrowWriter::try_new(
+            sink,
+            tickvault::store::schema::book_schema(),
+            Some(props),
+        )
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
+        for batch in &batches {
+            writer.write(batch).map_err(|e| anyhow::anyhow!("{e}"))?;
+        }
+        writer.close().map_err(|e| anyhow::anyhow!("{e}"))?;
+
+        let bytes = std::fs::metadata(&target)?.len();
+        rows += record.rows;
+        before += record.bytes;
+        after += bytes;
+        files += 1;
+        manifest.record_file(tickvault::store::manifest::FileRecord {
+            bytes,
+            ..record.clone()
+        })?;
+    }
+    manifest.sync_dir()?;
+    Ok((rows, files, before, after))
 }
 
 #[tokio::main]
@@ -1164,6 +1238,18 @@ async fn main() -> Result<()> {
             }
         }
 
+        Command::Transcode {
+            archive,
+            out,
+            compression,
+        } => {
+            let (rows, files, before, after) = transcode(&archive, &out, &compression)?;
+            println!(
+                "{files} files, {rows} rows: {:.2} MB -> {:.2} MB as {compression}",
+                before as f64 / 1e6,
+                after as f64 / 1e6
+            );
+        }
         Command::Coverage {
             archive,
             bucket_secs,
