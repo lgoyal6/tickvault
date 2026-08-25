@@ -18,6 +18,7 @@ pub mod clock;
 pub mod error;
 pub mod fixed;
 pub mod gap;
+pub mod limits;
 pub mod sequence;
 pub mod symbols;
 pub mod types;
