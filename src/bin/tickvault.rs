@@ -309,6 +309,18 @@ enum Command {
         #[arg(long)]
         dry_run: bool,
     },
+    /// Measure how fast the book applies and the archive writes.
+    ///
+    /// The README quotes a throughput number, and a quoted number with no way
+    /// to reproduce it is not a measurement. This is the way to reproduce it.
+    Bench {
+        /// Messages to apply, and rows to write.
+        #[arg(long, default_value_t = 500_000)]
+        messages: usize,
+        /// Levels changed per message, which is what makes a row.
+        #[arg(long, default_value_t = 4)]
+        levels: usize,
+    },
     /// Apply a retention window to an archive.
     ///
     /// What it removes is recorded in the manifest as a retention, which is a
@@ -718,6 +730,146 @@ fn transcode(archive: &str, out: &str, compression: &str) -> Result<(u64, usize,
     }
     manifest.sync_dir()?;
     Ok((rows, files, before, after))
+}
+
+/// Measure the two stages that decide throughput, and say where they run.
+///
+/// Deliberately synthetic. Real feeds arrive at whatever rate the venue sends,
+/// which measures the venue rather than this, so the book is fed as fast as it
+/// will go and the writer is given rows as fast as it will take them.
+async fn bench(messages: usize, levels: usize) -> Result<()> {
+    use std::time::Instant;
+    use tickvault::book::{BookDelta, L2Book, LevelChange};
+    use tickvault::clock::{Stamp, Timestamps};
+    use tickvault::fixed::Fixed;
+    use tickvault::store::schema::RowBuilder;
+    use tickvault::store::writer::PartitionKey;
+    use tickvault::types::Side;
+
+    let symbol = Symbol::parse("BTC-USD").map_err(anyhow::Error::msg)?;
+    let rows = messages * levels;
+    println!(
+        "{} messages x {} levels = {} rows, on {} {}",
+        messages,
+        levels,
+        rows,
+        std::env::consts::OS,
+        std::env::consts::ARCH
+    );
+
+    let make = |i: usize| {
+        let base = 80_000_000_000_000i64 + ((i % 2_000) as i64) * 1_000_000;
+        BookDelta {
+            symbol: symbol.clone(),
+            changes: (0..levels)
+                .map(|l| LevelChange {
+                    side: if (i + l).is_multiple_of(2) {
+                        Side::Bid
+                    } else {
+                        Side::Ask
+                    },
+                    price: Fixed::from_mantissa(base + (l as i64) * 100_000),
+                    qty: Fixed::from_mantissa(((i + l) % 97 + 1) as i64 * 1_000_000),
+                })
+                .collect(),
+            seq: Some(i as u64),
+            first_seq: None,
+            prev_seq: None,
+            checksum: None,
+            stamps: Timestamps::recv_only(Stamp {
+                mono_nanos: i as u64,
+                wall_nanos: 1_787_000_000_000_000_000 + i as i64,
+            }),
+        }
+    };
+
+    // 1. The book. Pure CPU: no allocation of a writer, no disk.
+    let mut book = L2Book::new(symbol.clone());
+    let deltas: Vec<BookDelta> = (0..messages).map(make).collect();
+    let started = Instant::now();
+    for delta in &deltas {
+        book.apply_delta(delta);
+    }
+    let apply = started.elapsed();
+    println!(
+        "  book apply     {:>10.0} msg/s   {:>10.0} rows/s   ({:.2}s)",
+        messages as f64 / apply.as_secs_f64(),
+        rows as f64 / apply.as_secs_f64(),
+        apply.as_secs_f64()
+    );
+
+    // 2. Building Arrow rows, which is the cost before anything touches disk.
+    let key = PartitionKey::new(VenueId::Kraken, &symbol, 1_787_000_000_000_000_000);
+    let started = Instant::now();
+    let mut builder = RowBuilder::default();
+    let mut batches = Vec::new();
+    for (i, delta) in deltas.iter().enumerate() {
+        builder.push_delta(VenueId::Kraken, delta, i as u64, false);
+        if builder.len() >= 8_192 {
+            batches.push(builder.finish().expect("batch"));
+        }
+    }
+    if let Some(last) = builder.finish() {
+        batches.push(last);
+    }
+    let encode = started.elapsed();
+    println!(
+        "  arrow encode   {:>10.0} msg/s   {:>10.0} rows/s   ({:.2}s)",
+        messages as f64 / encode.as_secs_f64(),
+        rows as f64 / encode.as_secs_f64(),
+        encode.as_secs_f64()
+    );
+
+    // 3. The writer, through the same bounded channel the recorder uses, onto
+    //    whatever disk this is. Block rather than drop: a benchmark that sheds
+    //    rows when it falls behind measures nothing.
+    // Its own directory under the system temp dir, cleaned up at the end. A
+    // benchmark that wrote into the user's archive would be a poor guest.
+    let dir = std::env::temp_dir().join(format!("tickvault-bench-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir)?;
+    let pipeline = Pipeline::start(PipelineConfig {
+        capacity: 64,
+        ..PipelineConfig::new(
+            WriterConfig {
+                max_rows_per_file: 500_000,
+                row_group_size: 8_192,
+                ..WriterConfig::new(&dir)
+            },
+            BackpressurePolicy::Block,
+        )
+    })?;
+    let started = Instant::now();
+    for batch in batches {
+        let n = batch.num_rows();
+        pipeline.submit(key.clone(), batch, (0, n as i64)).await;
+    }
+    let writer = pipeline.shutdown().await?;
+    let write = started.elapsed();
+    let bytes: u64 = writer.manifest().files().iter().map(|f| f.bytes).sum();
+    println!(
+        "  archive write  {:>10.0} rows/s   {:>10.2} MB/s   ({:.2}s, {:.1} MB of parquet)",
+        rows as f64 / write.as_secs_f64(),
+        bytes as f64 / 1e6 / write.as_secs_f64(),
+        write.as_secs_f64(),
+        bytes as f64 / 1e6
+    );
+
+    let _ = std::fs::remove_dir_all(&dir);
+
+    let slowest = apply.max(encode).max(write);
+    let name = if slowest == write {
+        "the writer"
+    } else if slowest == encode {
+        "Arrow encoding"
+    } else {
+        "the book"
+    };
+    println!(
+        "\nbottleneck: {name}, at {:.0} rows/s end to end",
+        rows as f64 / (apply + encode + write).as_secs_f64()
+    );
+    Ok(())
 }
 
 #[tokio::main]
@@ -1323,6 +1475,10 @@ async fn main() -> Result<()> {
             tickvault::supervise::serve(config, clock, Arc::clone(&health), shutdown).await?;
             println!("stopped");
         }
+        Command::Bench { messages, levels } => {
+            bench(messages, levels).await?;
+        }
+
         Command::Retention {
             archive,
             max_age_days,

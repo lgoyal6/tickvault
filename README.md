@@ -285,6 +285,31 @@ arrived.** A feed that is connected and silent looks identical to a healthy one
 in every other number, which is exactly how three of them went unnoticed for an
 hour.
 
+## Throughput, and where it stops
+
+The number above is reproducible rather than quoted:
+
+```
+$ tickvault bench
+500000 messages x 4 levels = 2000000 rows, on macos aarch64
+  book apply        8824126 msg/s     35296505 rows/s   (0.06s)
+  arrow encode      3369830 msg/s     13479318 rows/s   (0.15s)
+  archive write     3800863 rows/s        36.54 MB/s   (0.53s, 19.2 MB of parquet)
+
+bottleneck: the writer, at 2735100 rows/s end to end
+```
+
+Apple M3 Pro, three runs within 2.6M to 2.8M rows/s end to end. **The
+writer is the bottleneck**, at roughly a ninth of the rate the book maintains
+itself, which is why backpressure is a decision the recorder makes rather than a
+thing that happens to it.
+
+Deliberately synthetic. Feeding it a real venue would measure the venue: no
+exchange sends anything near this, and the six recorded together produce about
+31 MB an hour against the 37 MB a second the writer sustains here. The number
+that matters is the headroom, and the headroom is about three orders of
+magnitude.
+
 ## A stated retention window
 
 Measured across six venues: about **31 MB an hour**, which is 270 GB a year. A
@@ -466,7 +491,8 @@ cargo run --release -- replay  --archive ./archive --venue kraken --symbol BTC-U
   the raw tape is a separate line-durable record that could be reprocessed to
   fill it, but that reprocessing is not built.
 - **Blocking and dropping both cost something** once the disk is the
-  bottleneck, and above roughly 2.4M rows/s one of them will happen.
+  bottleneck, and above roughly 2.7M rows/s one of them will happen. Reproduce
+  with `tickvault bench`.
 - **The demo ships five minutes per venue, not the dataset.** Enough for a
   browser to fetch and rebuild; the archive itself belongs on Hugging Face.
 - **The viewer skips checkpoints.** It replays from the partition's opening
