@@ -314,6 +314,39 @@ fn same_message(a: &Row, b: &Row) -> bool {
     a.msg_index == b.msg_index && a.event == b.event && a.recv_wall == b.recv_wall
 }
 
+/// Split rows already in hand into messages, the same way the stream does.
+///
+/// The unit of application is the message, never the row. Applying a message's
+/// levels one at a time truncates once per *level* instead of once per message,
+/// which on a depth-limited feed rebuilds a book that differs from the one the
+/// recorder held; that was a real bug, and it survived a passing determinism
+/// gate. So there is one definition of where a message ends, and this is how a
+/// consumer holding rows from somewhere other than a file gets at it rather
+/// than writing the rule out a second time.
+pub fn split_messages(rows: &[Row]) -> Messages<'_> {
+    Messages { rows }
+}
+
+/// Iterator returned by [`split_messages`].
+pub struct Messages<'a> {
+    rows: &'a [Row],
+}
+
+impl<'a> Iterator for Messages<'a> {
+    type Item = &'a [Row];
+
+    fn next(&mut self) -> Option<&'a [Row]> {
+        let first = self.rows.first()?;
+        let mut n = 1;
+        while n < self.rows.len() && same_message(first, &self.rows[n]) {
+            n += 1;
+        }
+        let (message, rest) = self.rows.split_at(n);
+        self.rows = rest;
+        Some(message)
+    }
+}
+
 impl Iterator for MessageStream {
     type Item = Result<Vec<Row>>;
 
@@ -347,5 +380,85 @@ impl Iterator for MessageStream {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod message_split_tests {
+    use super::*;
+    use crate::types::{BookLevel, Side};
+
+    fn row(msg_index: u64, event: EventKind, recv_wall: i64, price: i64) -> Row {
+        Row {
+            event,
+            msg_index,
+            recv_wall,
+            venue_ts: None,
+            side: Side::Bid,
+            price: Fixed::from_mantissa(price),
+            qty: Fixed::from_mantissa(1),
+            suspect: false,
+            book_level: BookLevel::L2,
+            order_id: None,
+            action: None,
+            queue_index: None,
+            queue_certainty: None,
+            traded_qty: None,
+        }
+    }
+
+    #[test]
+    fn levels_of_one_message_stay_together() {
+        let rows = vec![
+            row(0, EventKind::Delta, 100, 1),
+            row(0, EventKind::Delta, 100, 2),
+            row(1, EventKind::Delta, 200, 3),
+        ];
+        let split: Vec<usize> = split_messages(&rows).map(|m| m.len()).collect();
+        assert_eq!(split, vec![2, 1]);
+    }
+
+    #[test]
+    fn all_three_fields_end_a_message() {
+        // A shared index is not enough on its own. A snapshot and a delta that
+        // happen to carry the same index are different messages, and so are two
+        // messages that arrived at different instants.
+        let by_index = vec![
+            row(0, EventKind::Delta, 100, 1),
+            row(1, EventKind::Delta, 100, 2),
+        ];
+        let by_kind = vec![
+            row(0, EventKind::Snapshot, 100, 1),
+            row(0, EventKind::Delta, 100, 2),
+        ];
+        let by_time = vec![
+            row(0, EventKind::Delta, 100, 1),
+            row(0, EventKind::Delta, 101, 2),
+        ];
+        for rows in [by_index, by_kind, by_time] {
+            assert_eq!(split_messages(&rows).count(), 2);
+        }
+    }
+
+    #[test]
+    fn every_row_lands_in_exactly_one_message() {
+        let rows = vec![
+            row(0, EventKind::Snapshot, 10, 1),
+            row(0, EventKind::Snapshot, 10, 2),
+            row(1, EventKind::Delta, 20, 3),
+            row(2, EventKind::Delta, 30, 4),
+            row(2, EventKind::Delta, 30, 5),
+        ];
+        let regrouped: Vec<Row> = split_messages(&rows).flatten().cloned().collect();
+        assert_eq!(regrouped.len(), rows.len());
+        for (a, b) in regrouped.iter().zip(rows.iter()) {
+            assert_eq!(a.msg_index, b.msg_index);
+            assert_eq!(a.price, b.price);
+        }
+    }
+
+    #[test]
+    fn an_empty_run_yields_no_messages() {
+        assert_eq!(split_messages(&[]).count(), 0);
     }
 }
