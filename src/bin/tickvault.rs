@@ -667,12 +667,9 @@ fn transcode(archive: &str, out: &str, compression: &str) -> Result<(u64, usize,
             .set_created_by(format!("tickvault {} transcode", env!("CARGO_PKG_VERSION")))
             .build();
         let sink = std::fs::File::create(&target)?;
-        let mut writer = ArrowWriter::try_new(
-            sink,
-            tickvault::store::schema::book_schema(),
-            Some(props),
-        )
-        .map_err(|e| anyhow::anyhow!("{e}"))?;
+        let mut writer =
+            ArrowWriter::try_new(sink, tickvault::store::schema::book_schema(), Some(props))
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
         for batch in &batches {
             writer.write(batch).map_err(|e| anyhow::anyhow!("{e}"))?;
         }
