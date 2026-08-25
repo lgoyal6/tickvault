@@ -10,10 +10,12 @@
 //!
 //! - [`fixed`] exact decimals, because checksum validation cannot survive floats
 
+pub mod clock;
 pub mod error;
 pub mod fixed;
 pub mod types;
 
+pub use clock::{Clock, ManualClock, MonotonicClock, Stamp, Timestamps};
 pub use error::{Error, Result};
 pub use fixed::Fixed;
 pub use types::{BookLevel, Side, Symbol, VenueId, VenueSymbol};
