@@ -178,3 +178,39 @@ footer {
   header { grid-template-columns: minmax(0, 1fr); gap: 26px; }
   .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* ---- shared nav shell ------------------------------------------------
+   Written entirely in this page's own variables, so it takes the palette
+   it is dropped into instead of importing a second one. */
+html { scroll-padding-top: 96px; }
+.topbar {
+  position: sticky; top: 0; z-index: 20;
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
+  backdrop-filter: blur(8px); border-bottom: 1px solid var(--rule);
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 10px clamp(20px, 3vw, 44px);
+}
+.brand { font: 15px/1 var(--serif); text-decoration: none; color: var(--ink); }
+.brand span { color: var(--ox); }
+.navlinks { display: flex; gap: 18px; font: 12px/1 var(--mono); letter-spacing: .06em; }
+.navlinks a { color: var(--sub); text-decoration: none; transition: color .18s ease; }
+.navlinks a:hover { color: var(--ox); }
+.tabs {
+  position: sticky; top: 40px; z-index: 19;
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
+  backdrop-filter: blur(8px); border-bottom: 1px solid var(--rule);
+  display: flex; gap: 2px; overflow-x: auto; padding: 0 clamp(20px, 3vw, 44px);
+}
+.tabs a {
+  flex: 0 0 auto; display: flex; align-items: center; min-height: 44px;
+  padding: 0 13px; font: 11px/1 var(--mono); letter-spacing: .1em;
+  text-transform: uppercase; color: var(--faint); text-decoration: none;
+  border-bottom: 2px solid transparent;
+  transition: color .18s ease, border-color .18s ease;
+}
+.tabs a:hover { color: var(--sub); }
+.tabs a[aria-current="true"] { color: var(--ox); border-bottom-color: var(--ox); }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .tabs a, .navlinks a { transition: none; }
+}
