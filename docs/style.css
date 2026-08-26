@@ -48,7 +48,25 @@ section { padding-top: 40px; padding-bottom: 40px; border-bottom: 1px solid var(
 h2 { font-size: clamp(22px, 2.6vw, 30px); font-weight: 400; margin-bottom: 6px; }
 h3 { font-size: 18px; font-weight: 400; margin: 22px 0 6px; }
 p { max-width: 74ch; margin-bottom: 12px; color: var(--sub); }
-p.lead { color: var(--ink); }
+/* The intro to a figure sits alone above it, so a 74ch cap leaves most of a wide
+   screen blank. It gets more room; body prose inside a split gets none. */
+p.lead { color: var(--ink); max-width: 104ch; }
+
+/* Prose beside a takeaway rather than a narrow column with a blank half.
+   A wide screen should be used, not left empty. */
+.split {
+  display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 4fr);
+  gap: clamp(20px, 3vw, 46px); align-items: start; margin-top: 8px;
+}
+.split p { max-width: none; }
+.takeaway { border-left: 2px solid var(--ox); padding: 2px 0 2px 16px; }
+.takeaway dt {
+  font: 11px/1.6 var(--mono); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--faint); margin-top: 12px;
+}
+.takeaway dt:first-child { margin-top: 0; }
+.takeaway dd { font-size: 19px; line-height: 1.35; }
+.takeaway dd small { display: block; font-size: 13px; color: var(--sub); margin-top: 2px; }
 p strong { color: var(--ink); font-weight: 400; }
 code { font: .9em var(--mono); background: var(--panel); padding: 1px 4px; }
 
@@ -136,10 +154,19 @@ table.cov td { padding: 0; }
 .legend span { display: flex; align-items: center; gap: 6px; }
 
 /* ---------- source map ---------- */
-ul.map { list-style: none; max-width: 78ch; }
-ul.map li { border-top: 1px solid var(--hair); padding: 10px 0; color: var(--sub); }
-ul.map li b { color: var(--ink); font-weight: 400; }
-ul.map li .where { font: 11px var(--mono); color: var(--ox); }
+/* The parts doing the work, as a row of cards, so they read as a set and fill
+   the width instead of stacking into one long narrow column. */
+ul.map {
+  list-style: none; display: grid; margin-top: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  border: 1px solid var(--rule); background: var(--panel);
+}
+ul.map li {
+  padding: 14px 16px; color: var(--sub); font-size: 15px; line-height: 1.45;
+  border-right: 1px solid var(--hair); border-bottom: 1px solid var(--hair);
+}
+ul.map li b { color: var(--ink); font-weight: 400; display: block; margin-bottom: 4px; }
+ul.map li .where { display: block; margin-top: 8px; font: 11px var(--mono); color: var(--ox); }
 
 footer {
   padding-top: 26px; padding-bottom: 40px;
