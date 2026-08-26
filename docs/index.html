@@ -77,19 +77,29 @@
     <div class="banner" id="banner">The engine is starting.</div>
   </div>
 
-  <h3>What the chart is showing</h3>
-  <p>
-    Height is <strong>cumulative quantity</strong>: at any price, how much would trade if
-    you swept the book to there. The staircase rises away from the middle because
-    orders pile up further from the current price. A wall on one side is a lot of
-    size waiting, and it is the thing microstructure work is usually about.
-  </p>
-  <p>
-    Bids are drawn solid and asks dashed, so the two sides stay distinguishable
-    without relying on colour. Prices are exact integers counting billionths all
-    the way from the venue's wire format to this canvas; nothing is rounded until
-    it is drawn.
-  </p>
+  <div class="split">
+    <div>
+      <h3>What the chart is showing</h3>
+      <p>
+        Height is <strong>cumulative quantity</strong>: at any price, how much would
+        trade if you swept the book to there. The staircase rises away from the middle
+        because orders pile up further from the current price, so a wall on one side is
+        a lot of size waiting. That shape is what microstructure work is usually about.
+      </p>
+      <p>
+        Prices are exact integers counting billionths, all the way from the venue's
+        wire format to this canvas. Nothing is rounded until it is drawn.
+      </p>
+    </div>
+    <dl class="takeaway">
+      <dt>height</dt>
+      <dd>What a sweep would cost.<small>Everything resting up to that price.</small></dd>
+      <dt>the gap in the middle</dt>
+      <dd>The spread.<small>Best bid to best ask, nothing resting between.</small></dd>
+      <dt>solid against dashed</dt>
+      <dd>Bids against asks.<small>Separable without seeing colour.</small></dd>
+    </dl>
+  </div>
 </section>
 
 <section class="gut">
@@ -115,30 +125,41 @@
     </div>
   </div>
 
-  <p>
-    The striped row is Bitstamp. Its aggregated feed carries no sequence number, no
-    update id and no checksum, so a dropped message on it cannot be detected by any
-    means. It reads <strong>0% verified</strong> rather than being rounded up to look
-    like the others, and that row is the reason this project exists. Recorded
-    order-by-order instead, the same venue becomes the best validated of the six,
-    because every event there names its predecessor.
-  </p>
-  <p>
-    <strong>The red blocks are our fault, not the venues'.</strong> Three feeds stopped
-    sending without closing the connection, so the socket stayed open, the reader
-    waited on it, and the recorder sat at zero CPU writing nothing. On Bitstamp that
-    lasted an hour. It is worth saying plainly because it is the one failure this
-    project could not previously see: every other fault ends up in the gap report,
-    while a silent socket produces an archive with no rows and a report with nothing
-    to say, so a lost feed reads as a quiet market.
-  </p>
-  <p>
-    This grid is how it was found, which is the whole argument for publishing one.
-    There is now an idle timeout that reconnects and records the silence as downtime,
-    and two tests that fail without it. The holes stay on the chart rather than being
-    re-recorded away, because a coverage grid that only ever shows good days is not
-    evidence of anything.
-  </p>
+  <div class="split">
+    <div>
+      <p>
+        <strong>The striped row is Bitstamp</strong>, and it is the reason this project
+        exists. Its aggregated feed carries no sequence number, no update id and no
+        checksum, so a dropped message on it cannot be detected by any means. It reads
+        0% verified rather than being rounded up to look like the others. Recorded
+        order-by-order instead, the same venue becomes the best validated of the six,
+        because every event there names its predecessor.
+      </p>
+      <p>
+        <strong>The red blocks are our fault, not the venues'.</strong> Three feeds
+        stopped sending without closing the connection, so the socket stayed open and
+        the recorder sat at zero CPU writing nothing. On Bitstamp that lasted an hour.
+        It is the one failure this project could not previously see: every other fault
+        ends up in the gap report, while a silent socket produces an archive with no
+        rows and a report with nothing to say, so a lost feed reads as a quiet market.
+      </p>
+      <p>
+        This grid is how it was found, which is the argument for publishing one. There
+        is now an idle timeout that reconnects and records the silence as downtime, and
+        two tests that fail without it. The holes stay on the chart rather than being
+        re-recorded away, because a coverage grid that only ever shows good days is not
+        evidence of anything.
+      </p>
+    </div>
+    <dl class="takeaway">
+      <dt>worst row</dt>
+      <dd>Bitstamp, 0% verified<small>Its aggregated feed publishes nothing to check against.</small></dd>
+      <dt>what the red means</dt>
+      <dd>A socket that went quiet.<small>Our bug, up to an hour, found by this grid.</small></dd>
+      <dt>fixed, not hidden</dt>
+      <dd>An idle timeout, and two tests.<small>The holes stay on the chart.</small></dd>
+    </dl>
+  </div>
 </section>
 
 <section class="gut">
