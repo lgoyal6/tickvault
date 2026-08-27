@@ -1,3 +1,11 @@
+<a href="https://lgoyal6.github.io/tickvault/">
+  <img alt="tickvault - open the live demo" src="docs/og.png">
+</a>
+
+**[Open the live demo](https://lgoyal6.github.io/tickvault/)** - The real reconstruction engine compiled to WebAssembly. Pick a venue, drag to any
+instant, and watch the order book rebuild from the archive message by message,
+with the coverage grid beside it saying which windows are trustworthy.
+
 # tickvault
 
 I invest, and I built myself a morning brief for AI infrastructure market news.
@@ -24,11 +32,6 @@ its front page.**
 > validate with, every window it could not vouch for is marked suspect and
 > counted, and the venues that cannot be checked at all are published as 0%
 > verified rather than rounded up to look like the rest.
-
-**Live demo:** [lgoyal6.github.io/tickvault](https://lgoyal6.github.io/tickvault/),
-the real reconstruction engine compiled to WebAssembly. Pick a venue, drag to any
-instant, and watch the order book rebuild from the archive message by message,
-with the coverage grid beside it saying which windows are trustworthy.
 
 ```bash
 cargo run --release -- record --venue kraken --seconds 60 --archive ./archive
@@ -415,7 +418,6 @@ aggregated levels. `book.suspect` is true when the recorder could not vouch for
 the window, and `plot_book` writes it on the chart. Prices arrive as floats for
 convenience and as exact 1e-9 integers through `to_arrow()`, which hands Arrow
 buffers to polars without a copy. Details in [`docs/python.md`](docs/python.md).
-
 
 ## Architecture
 
