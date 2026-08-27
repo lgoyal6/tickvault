@@ -106,7 +106,7 @@ function draw(book) {
     const y = Y(q);
     ctx.fillText(q.toFixed(q < 10 ? 2 : 0), pad.l - 8, y + 3);
     if (i > 0) {
-      ctx.strokeStyle = '#e8e3d6';
+      ctx.strokeStyle = css('--grid');
       ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + w, y); ctx.stroke();
     }
   }
