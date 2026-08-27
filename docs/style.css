@@ -215,3 +215,8 @@ html { scroll-padding-top: 96px; }
   html { scroll-behavior: auto; }
   .tabs a, .navlinks a { transition: none; }
 }
+
+/* Brand marks in the nav, sized to the text and inheriting its colour. */
+.navlinks a { display: inline-flex; align-items: center; gap: 7px; }
+.navlinks svg { width: 15px; height: 15px; flex: 0 0 auto; }
+.brand { letter-spacing: .005em; }
