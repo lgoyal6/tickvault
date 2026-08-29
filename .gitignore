@@ -8,3 +8,6 @@ __pycache__/
 # wasm build output
 viewer/pkg/
 viewer/target/
+
+# graphify knowledge graph (local index, not source)
+graphify-out/
