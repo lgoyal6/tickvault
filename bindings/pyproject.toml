@@ -9,7 +9,7 @@ build-backend = "maturin"
 # collision was the alternative; this keeps `import tickvault` intact, which is
 # the name that appears in every snippet.
 name = "tickvault-ob"
-version = "0.1.0"
+version = "0.1.1"
 description = "Full-depth crypto order book archives, honest about their own gaps"
 readme = "README.md"
 requires-python = ">=3.9"

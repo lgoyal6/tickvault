@@ -6,7 +6,7 @@ members = ["bindings"]
 
 [package]
 name = "tickvault"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 description = "Full-depth crypto order book recorder and archive that publishes its own gap statistics"
 # Dual, matching LICENSE-MIT and LICENSE-APACHE and the published wheel's
