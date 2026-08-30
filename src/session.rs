@@ -1492,21 +1492,29 @@ pub async fn run(
         "subscription plan"
     );
 
-    let mut tasks = Vec::with_capacity(plan.connection_count());
+    // A `JoinSet` rather than a `Vec` of handles, because dropping a
+    // `JoinHandle` detaches its task instead of stopping it. The supervisor
+    // cancels a venue by dropping this future, and a detached connection would
+    // keep its clone of the archive pipeline, which is exactly what the writer
+    // drain then cannot get back. Dropping a `JoinSet` aborts what it holds.
+    let mut tasks = tokio::task::JoinSet::new();
     for group in plan.connections {
-        tasks.push(tokio::spawn(run_connection(
+        tasks.spawn(run_connection(
             Arc::clone(&venue),
             group,
             Arc::clone(&clock),
             stop,
             sinks.clone(),
-        )));
+        ));
     }
 
+    // Joined in completion order rather than spawn order. `GapReport::merge`
+    // sorts its rows and the counters are sums, so the merged outcome does not
+    // depend on which socket finishes first.
     let mut merged: Option<RunOutcome> = None;
     let mut failure: Option<Error> = None;
-    for task in tasks {
-        match task.await {
+    while let Some(joined) = tasks.join_next().await {
+        match joined {
             Ok(Ok(outcome)) => {
                 merged = Some(match merged {
                     Some(acc) => acc.merge(outcome),
