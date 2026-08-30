@@ -7,6 +7,7 @@
 //! files that durability requires into the few large ones that reading wants.
 #[cfg(feature = "record")]
 pub mod compact;
+pub mod lock;
 pub mod manifest;
 pub mod reader;
 #[cfg(feature = "record")]

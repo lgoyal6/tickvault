@@ -1086,6 +1086,15 @@ async fn main() -> Result<()> {
         }
 
         Command::Verify { archive, read_only } => {
+            if !read_only && tickvault::store::lock::ArchiveLock::is_busy(archive.as_ref()) {
+                bail!(
+                    "{archive} is being written by a running recorder, and recovery would move \
+                     its open files out from under it, which stops the writer without stopping \
+                     the feed. Stop the recorder and run this again. --read-only will not touch \
+                     anything, but it reports only what the manifest already records, so on a \
+                     live archive it will under-report."
+                );
+            }
             if !read_only {
                 let now = wall_now();
                 let recovered = recovery::recover(&archive, now)?;
