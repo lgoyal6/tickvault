@@ -511,9 +511,29 @@ impl Pipeline {
 /// back once those have finished. Failing here means a task outlived the run,
 /// which would leave the last file of every partition unreadable.
 pub async fn shutdown_shared(pipeline: Arc<Pipeline>) -> Result<ArchiveWriter> {
-    let owned = Arc::try_unwrap(pipeline)
-        .map_err(|_| Error::Other("a recording task still holds the pipeline".to_string()))?;
-    owned.shutdown().await
+    // Aborting a connection task does not stop it where it stands. It releases
+    // its clone when the runtime next polls it, which is soon and is never
+    // instant, so a single attempt loses that race and reports a clean run as a
+    // failed one. Waiting briefly is the difference between draining the writer
+    // here and leaving the last rotation of every partition to `Drop`.
+    const GRACE: Duration = Duration::from_secs(5);
+
+    let deadline = Instant::now() + GRACE;
+    let mut pipeline = pipeline;
+    loop {
+        match Arc::try_unwrap(pipeline) {
+            Ok(owned) => return owned.shutdown().await,
+            Err(returned) => {
+                if Instant::now() >= deadline {
+                    return Err(Error::Other(
+                        "a recording task still holds the pipeline".to_string(),
+                    ));
+                }
+                pipeline = returned;
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        }
+    }
 }
 
 impl Drop for Pipeline {
@@ -603,6 +623,31 @@ mod tests {
                 .verify()
                 .is_clean()
         );
+    }
+
+    #[tokio::test]
+    async fn the_drain_waits_for_a_task_that_is_still_letting_go() {
+        let dir = tempfile::tempdir().unwrap();
+        let pipeline =
+            Arc::new(Pipeline::start(config(dir.path(), BackpressurePolicy::Block, 64)).unwrap());
+        for i in 0..5 {
+            let (key, b, span) = batch(10, BASE + i * 1_000_000);
+            assert_eq!(pipeline.submit(key, b, span).await, Submitted::Accepted);
+        }
+
+        // What a cancelled connection task looks like from here. Aborting one
+        // does not stop it where it stands: it releases its clone when the
+        // runtime next polls it, which is soon and is never instant.
+        let held = Arc::clone(&pipeline);
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+            drop(held);
+        });
+
+        let writer = shutdown_shared(pipeline)
+            .await
+            .expect("a task on its way out must not fail the drain");
+        assert_eq!(writer.manifest().total_rows(), 50);
     }
 
     #[tokio::test]
