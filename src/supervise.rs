@@ -36,6 +36,12 @@ pub struct VenueHealth {
     pub restarts: u32,
     /// Why it ended, if it ended badly.
     pub last_error: Option<String>,
+    /// The archive writer stopped taking rows while the feed stayed up.
+    ///
+    /// Its own field because no other one moves when it happens. The socket
+    /// keeps delivering, `frames` keeps climbing, `last_frame_wall` stays
+    /// current, and not a single row reaches disk.
+    pub archive_stopped: bool,
     pub report: Option<GapReport>,
 }
 
@@ -49,6 +55,7 @@ impl VenueHealth {
             last_frame_wall: None,
             restarts: 0,
             last_error: None,
+            archive_stopped: false,
             report: None,
         }
     }
@@ -72,6 +79,11 @@ impl VenueHealth {
                 Some(e) => format!("not running: {e}"),
                 None => "not running".to_string(),
             });
+        }
+        // Before the silence check, because this venue is not silent. That is
+        // the whole difficulty: it looks busier than a healthy one.
+        if self.archive_stopped {
+            return Some("the archive writer has stopped".to_string());
         }
         match self.silent_for(now_wall) {
             None => Some("connected but has never received a frame".to_string()),
@@ -108,7 +120,15 @@ impl Health {
     }
 
     fn set_running(&self, venue: VenueId, running: bool) {
-        self.with(venue, |h| h.running = running);
+        self.with(venue, |h| {
+            h.running = running;
+            // A new attempt builds a new pipeline, so this is the one place the
+            // flag may clear. Clearing it on every progress update instead
+            // would erase the condition a tick after it appeared.
+            if running {
+                h.archive_stopped = false;
+            }
+        });
     }
 
     fn record_restart(&self, venue: VenueId, error: Option<String>) {
@@ -121,6 +141,10 @@ impl Health {
 }
 
 impl ProgressSink for Health {
+    fn archive_stopped(&self, venue: VenueId) {
+        self.with(venue, |h| h.archive_stopped = true);
+    }
+
     fn update(&self, snapshot: RunSnapshot) {
         self.with(snapshot.venue, |h| {
             h.running = true;
@@ -146,6 +170,13 @@ pub async fn serve(
     health: Arc<Health>,
     shutdown: tokio::sync::watch::Receiver<bool>,
 ) -> Result<()> {
+    // Claimed for the whole run and released when the process ends, however it
+    // ends. It stops a second recorder writing the same archive, and it stops
+    // recovery running underneath this one: `verify` moving an in-progress file
+    // aside kills the writer while leaving the feed up, which reads as healthy
+    // and persists nothing.
+    let _lock = crate::store::lock::ArchiveLock::acquire(&config.archive)?;
+
     let http = ReqwestFetch::shared()?;
     let mut tasks = Vec::new();
 
@@ -353,6 +384,23 @@ mod tests {
     fn a_feed_that_is_up_and_delivering_is_not_trouble() {
         let now = 1_000 * SECOND;
         assert_eq!(healthy(now).trouble(now, 60 * SECOND), None);
+    }
+
+    #[test]
+    fn a_venue_whose_writer_has_stopped_is_trouble() {
+        // Measured on kastner-ml: for ninety seconds every venue read "ok" and
+        // /healthz answered 200 while the archive writer was dead on all six
+        // and nothing at all reached disk. Frames were arriving the whole time,
+        // which is why every other field here looks fine.
+        let now = 1_000 * SECOND;
+        let stopped = VenueHealth {
+            archive_stopped: true,
+            ..healthy(now)
+        };
+        assert_eq!(
+            stopped.trouble(now, 60 * SECOND),
+            Some("the archive writer has stopped".to_string())
+        );
     }
 
     #[test]

@@ -1056,6 +1056,13 @@ pub struct RunSnapshot {
 /// Somewhere to publish a snapshot to, periodically, while a run is going.
 pub trait ProgressSink: Send + Sync {
     fn update(&self, snapshot: RunSnapshot);
+
+    /// The archive writer for this venue has stopped taking rows.
+    ///
+    /// Not part of `update` because it must not wait for the next flush tick.
+    /// Until the watcher hears this, every field it reads says the venue is
+    /// healthy while nothing is being persisted.
+    fn archive_stopped(&self, venue: VenueId);
 }
 
 /// What a recording run produced.
@@ -1459,6 +1466,9 @@ async fn drain_to_archive(
             }
             crate::pipeline::Submitted::WriterStopped => {
                 tracing::error!(venue = %key.venue, "the archive writer stopped");
+                if let Some(progress) = sinks.progress.as_ref() {
+                    progress.archive_stopped(key.venue);
+                }
             }
             crate::pipeline::Submitted::Accepted => {}
         }
