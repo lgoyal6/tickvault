@@ -45,6 +45,7 @@ use crate::error::Result;
 use crate::store::manifest::{FileRecord, TruncationRecord};
 use crate::store::reader::ArchiveReader;
 use crate::store::rows::{MessageStream, RowStream};
+use crate::store::scan::Predicate;
 use crate::types::{BookLevel, Side, Symbol, VenueId};
 
 /// What a caller wants rebuilt.
@@ -293,12 +294,11 @@ impl Reconstructor {
             after = Some(ckpt.at_wall);
         }
 
-        // Only files that can still contain rows we need.
-        let floor = after.unwrap_or(i64::MIN);
-        let mut relevant: Vec<FileRecord> = files
-            .into_iter()
-            .filter(|f| f.last_recv_wall > floor && f.first_recv_wall <= request.at_wall)
-            .collect();
+        // Only files whose recorded span can still contain rows we need. The
+        // manifest's first and last recv_wall is a zone map, and this is the
+        // read of it; see crate::store::scan.
+        let (mut relevant, files_pruned) =
+            crate::store::scan::files_in_range(files, &Predicate::range(after, request.at_wall));
 
         // A snapshot resets the book, so anything before the last one at or
         // before the target is irrelevant. Found by walking files backwards,
@@ -313,6 +313,7 @@ impl Reconstructor {
 
         let mut stream = MessageStream::new(
             RowStream::new(self.reader.root(), relevant, request.at_wall)
+                .manifest_pruned(files_pruned)
                 .after(after.unwrap_or(i64::MIN)),
         );
         for message in &mut stream {
@@ -358,20 +359,21 @@ impl Reconstructor {
 
     /// Index of the file holding the last snapshot at or before `at`, and that
     /// snapshot's instant.
+    ///
+    /// Walks backwards, because the answer is the *last* one and the first
+    /// file that has any is therefore the answer. Each file is asked through
+    /// [`crate::store::scan::last_snapshot_at_or_before`], which pushes both
+    /// halves of the question into Parquet: `event == Snapshot` against the
+    /// footer statistics, and `recv_wall <= at` against the page index. Before
+    /// that existed this decoded every row of every file it touched, all 24
+    /// columns including three that allocate a String per row, to look at one
+    /// u8 per message. On an order-by-order feed, which never snapshots at
+    /// all, it decoded the whole day to return None.
     fn last_snapshot_before(&self, files: &[FileRecord], at: i64) -> Result<Option<(usize, i64)>> {
         for (index, file) in files.iter().enumerate().rev() {
-            let mut best: Option<i64> = None;
-            let mut stream =
-                MessageStream::new(RowStream::new(self.reader.root(), vec![file.clone()], at));
-            for message in &mut stream {
-                let message = message?;
-                if let Some(first) = message.first()
-                    && first.event == crate::store::schema::EventKind::Snapshot
-                {
-                    best = Some(first.recv_wall);
-                }
-            }
-            if let Some(wall) = best {
+            let path = self.reader.root().join(&file.path);
+            let (found, _) = crate::store::scan::last_snapshot_at_or_before(&path, at)?;
+            if let Some(wall) = found {
                 return Ok(Some((index, wall)));
             }
         }

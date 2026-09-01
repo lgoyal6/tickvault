@@ -141,6 +141,7 @@ pub fn compact_partition(
     let props = WriterProperties::builder()
         .set_compression(Compression::ZSTD(level))
         .set_max_row_group_row_count(Some(config.row_group_size))
+        .set_data_page_row_count_limit(config.data_page_rows)
         .set_created_by(format!(
             "tickvault {} (compacted)",
             env!("CARGO_PKG_VERSION")

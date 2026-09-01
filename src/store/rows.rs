@@ -11,11 +11,12 @@ use arrow::array::{
     Array, BooleanArray, Int64Array, RecordBatch, StringArray, TimestampNanosecondArray,
     UInt8Array, UInt32Array, UInt64Array,
 };
-use parquet::arrow::arrow_reader::{ParquetRecordBatchReader, ParquetRecordBatchReaderBuilder};
+use parquet::arrow::arrow_reader::ParquetRecordBatchReader;
 
 use crate::error::{Error, Result};
 use crate::fixed::Fixed;
 use crate::store::manifest::FileRecord;
+use crate::store::scan::{self, Explain, Predicate, ScanMode};
 use crate::store::schema::EventKind;
 use crate::types::{BookLevel, Side};
 
@@ -125,6 +126,12 @@ pub fn decode(batch: &RecordBatch) -> Result<Vec<Row>> {
 ///
 /// Bounded memory by construction: one open file, one decoded batch. A query
 /// over a whole day costs the same resident memory as a query over a second.
+///
+/// The two wall-clock bounds are not only a filter on decoded rows. They are
+/// the predicate [`crate::store::scan`] pushes into Parquet, so a row outside
+/// them is usually never decoded at all; see that module for what is pruned
+/// where. The row-level test below still runs, because pruning works in whole
+/// pages and a page can straddle either edge.
 pub struct RowStream {
     root: PathBuf,
     files: VecDeque<FileRecord>,
@@ -135,14 +142,16 @@ pub struct RowStream {
     until_wall: i64,
     /// Skip rows at or before this instant without decoding further files.
     after_wall: Option<i64>,
+    mode: ScanMode,
+    explain: Explain,
     finished: bool,
-    files_opened: usize,
     rows_yielded: u64,
 }
 
 impl RowStream {
     /// Stream `files` in the order given, up to and including `until_wall`.
     pub fn new(root: impl Into<PathBuf>, files: Vec<FileRecord>, until_wall: i64) -> Self {
+        let offered = files.len();
         RowStream {
             root: root.into(),
             files: files.into(),
@@ -150,8 +159,12 @@ impl RowStream {
             buffer: VecDeque::new(),
             until_wall,
             after_wall: None,
+            mode: ScanMode::Planned,
+            explain: Explain {
+                files_in_partition: offered,
+                ..Default::default()
+            },
             finished: false,
-            files_opened: 0,
             rows_yielded: 0,
         }
     }
@@ -162,8 +175,32 @@ impl RowStream {
         self
     }
 
+    /// Record files the manifest already dropped, so the explain covers the
+    /// whole plan rather than only the part that opened a file.
+    pub fn manifest_pruned(mut self, pruned: usize) -> Self {
+        self.explain.files_pruned = pruned;
+        self.explain.files_in_partition += pruned;
+        self
+    }
+
+    /// Read every row group and every column, as this did before there was a
+    /// planner.
+    ///
+    /// Exists for the two callers that need the comparison: the equivalence
+    /// gate, which asserts a planned scan yields exactly the rows an unplanned
+    /// one does, and the benchmark that measures the difference.
+    pub fn unpruned(mut self) -> Self {
+        self.mode = ScanMode::Unpruned;
+        self
+    }
+
     pub fn files_opened(&self) -> usize {
-        self.files_opened
+        self.explain.files_opened
+    }
+
+    /// What the plan skipped.
+    pub fn explain(&self) -> &Explain {
+        &self.explain
     }
 
     pub fn rows_yielded(&self) -> u64 {
@@ -176,18 +213,22 @@ impl RowStream {
     }
 
     fn open_next(&mut self) -> Result<bool> {
-        let Some(record) = self.files.pop_front() else {
-            return Ok(false);
-        };
-        let path = self.root.join(&record.path);
-        let file = std::fs::File::open(&path)?;
-        let reader = ParquetRecordBatchReaderBuilder::try_new(file)
-            .map_err(|e| Error::Other(format!("{}: {e}", path.display())))?
-            .build()
-            .map_err(|e| Error::Other(format!("{}: {e}", path.display())))?;
-        self.current = Some(reader);
-        self.files_opened += 1;
-        Ok(true)
+        // Loops, because a file can survive the manifest and still hold no row
+        // group the predicate wants: the manifest knows the file's span, the
+        // footer knows each group's.
+        while let Some(record) = self.files.pop_front() {
+            let path = self.root.join(&record.path);
+            let predicate = Predicate::range(self.after_wall, self.until_wall);
+            let (reader, explain) = scan::open_planned(&path, &predicate, self.mode)?;
+            let empty = explain.row_groups_read == 0;
+            self.explain.absorb(&explain);
+            if empty {
+                continue;
+            }
+            self.current = Some(reader);
+            return Ok(true);
+        }
+        Ok(false)
     }
 
     fn fill(&mut self) -> Result<bool> {
@@ -299,6 +340,11 @@ impl MessageStream {
 
     pub fn files_opened(&self) -> usize {
         self.rows.files_opened()
+    }
+
+    /// What the plan skipped.
+    pub fn explain(&self) -> &Explain {
+        self.rows.explain()
     }
 
     pub fn rows_yielded(&self) -> u64 {
