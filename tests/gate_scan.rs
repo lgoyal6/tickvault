@@ -378,6 +378,32 @@ fn a_file_with_no_snapshot_is_answered_from_its_footer() {
     );
 }
 
+/// A file that survives the manifest and then matches no row group at all.
+///
+/// The manifest knows a file's span; the footer knows each group's. A range
+/// that falls inside the span but between two groups reaches Parquet with an
+/// empty row group list, which is a shape worth having a test for rather than
+/// an assumption.
+#[test]
+fn a_file_that_prunes_to_nothing_is_not_an_error() {
+    let dir = tempfile::tempdir().unwrap();
+    write_archive(dir.path(), 20_000, 4, 200_000, 5_000, 1_000, None);
+
+    let reader = ArchiveReader::open(dir.path()).expect("open");
+    let file = reader.files().first().expect("one file").clone();
+    let path = dir.path().join(&file.path);
+
+    // Inside the file's recorded span, and after every row in it.
+    let past_everything = Predicate::range(Some(file.last_recv_wall), file.last_recv_wall + 1);
+    let (mut rows, explain) =
+        scan::open_planned(&path, &past_everything, ScanMode::Planned).expect("plan");
+    assert_eq!(explain.row_groups_read, 0, "{explain}");
+    assert!(
+        rows.next().is_none(),
+        "an empty plan should yield no batches"
+    );
+}
+
 /// A full decode, for the probe to be checked against.
 fn naive_last_snapshot(root: &Path, relative: &str, at: i64) -> Option<i64> {
     let batches = tickvault::store::reader::read_batches(root.join(relative)).expect("read");
