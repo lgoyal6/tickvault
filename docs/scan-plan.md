@@ -22,15 +22,21 @@ row; `recv_mono` is a monotonic reading that restarts with the recorder and is
 never ordered on; `seq`, `first_seq`, `prev_seq`, `checksum` and `skew_ns`
 exist for the gap report rather than for the book.
 
-`tickvault query --explain` prints exactly this, as counts:
+`tickvault query --explain` prints exactly this, as counts. Thirty seconds out
+of a compacted 45 minute Coinbase recording, 788,834 rows in one file:
 
 ```
-manifest          2 of       46 files      (95.7% pruned on recorded span)
-row groups        3 of      120 groups     (97.5% pruned on footer statistics)
-pages            11 of      360 pages      (96.9% pruned on the page index)
-rows          22000 of  6000000 rows       (0.37% decoded)
-columns          14 of       24 columns    (61.2% of bytes in scope)
+manifest           1 of        1 files      (0.0% pruned on recorded span)
+row groups         1 of       16 groups     (93.8% pruned on footer statistics)
+pages              1 of        3 pages      (66.7% pruned on the page index)
+rows           20418 of   788834 rows       (2.59% decoded)
+columns           14 of       24 columns    (5.4% of bytes in scope)
 ```
+
+Counts rather than one ratio, because the four levels prune for different
+reasons and collapsing them would hide which one did the work. Compaction is
+what makes this the interesting shape: once a day is one file the manifest
+prunes nothing at all, and the footer and the page index are everything.
 
 ## Why this works, and where it would not
 
@@ -99,11 +105,51 @@ Smaller pages prune harder and cost storage, because each page is its own
 compression context and zstd has less to work with. The cost is in the data,
 not in the metadata: the page index itself stays small.
 
-`scripts/scan-bench.sh` measures both sides on a real recording. The measured
-table for this archive lives outside the repository with the rest of the
-benchmark output; the shape of the result is that going finer buys scan
-granularity roughly linearly until pages stop containing whole queries, and
-costs compression ratio roughly linearly the whole way.
+The row group size is the same tradeoff one level up, and it is already fixed
+at 50,000 by a different constraint. A row group is what the writer buffers
+before flushing, so it bounds resident memory on the write side, and it is
+also the unit an interrupted file loses. Tuning it for read pruning would move
+a number the crash story depends on, which is why the page size is the dial
+that moved here and the row group size is not.
+
+`scripts/scan-bench.sh` measures both sides. Sweeping the dial over the
+compacted Coinbase archive above, asking the same thirty second question,
+median of seven runs on an M3 Pro:
+
+| rows/page | archive bytes | rows decoded | pages read | query |
+|---|---|---|---|---|
+| 20,000 (Parquet's default) | 6,281,525 | 20,016 | 1 of 3 | 0.074 s |
+| 8,000 | 6,402,121 (+1.9%) | 16,944 | 2 of 7 | 0.068 s |
+| 2,000 | 6,885,057 (+9.6%) | 10,800 | 5 of 25 | 0.075 s |
+| 500 | 8,090,883 (+28.8%) | 8,192 | 8 of 50 | 0.093 s |
+| 200 | 9,896,605 (+57.6%) | 8,192 | 8 of 50 | 0.113 s |
+
+Three things worth reading off that.
+
+**The curve is U-shaped.** Rows decoded falls the whole way, and query time
+does not: it bottoms out around 8,000 and then climbs. Each page carries a
+fixed decode cost and its own compression frame, and past some point that
+overtakes what the pruning saves.
+
+**It stops helping before it stops costing.** At 500 and at 200 rows per page
+the query decodes the same 8,192 rows, because that is the reader's own batch
+granularity and no page index can go below it. The archive keeps growing
+anyway.
+
+**The cost is in the data, not the metadata.** The footer only moved from
+45,194 to 46,227 bytes across the whole sweep. What grows is the file, because
+zstd has less to work with per page.
+
+**So the default is left at Parquet's 20,000.** The measured optimum is 8,000,
+worth about 6 ms on a 74 ms query of which 26 ms is process startup, on one
+45 minute archive of one instrument. That is not enough evidence to move a
+storage format default, and the dial is there for anyone whose archive says
+otherwise. The exact commands and the raw output are with the rest of the
+benchmark material, outside this repository.
+
+On an order-by-order archive the dial does almost nothing at all: Bitstamp's
+rows carry `order_id`, `action` and `queue_certainty` as `Utf8`, so Parquet's
+1 MB page *byte* limit binds long before any row count does.
 
 ## Reading the plan yourself
 
@@ -122,6 +168,15 @@ scripts/scan-bench.sh ./archive coinbase BTC-USD main
 
 ## What is deliberately not here
 
+- **No `RowFilter`, and no late materialisation.** arrow-rs can evaluate a
+  predicate on a few decoded columns and only materialise the rest for the rows
+  that survive, which is the right tool when the predicate needs few columns
+  and the output needs many. Neither of this archive's two predicates is
+  shaped like that. The time range is answered from the page index without
+  decoding anything at all, which is strictly better than decoding
+  `recv_wall` to filter on it. And the snapshot probe needs the same two
+  columns for the predicate and for the answer, so there is nothing left to
+  defer.
 - **No predicate pushdown on anything but time and `event`.** A general
   expression pushdown would be a query engine, and nothing asks for one.
 - **No Bloom filters.** They answer point lookups on high-cardinality columns,
