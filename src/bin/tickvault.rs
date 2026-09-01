@@ -262,6 +262,10 @@ enum Command {
         /// Levels a side to use for imbalance.
         #[arg(long, default_value_t = 10)]
         depth: usize,
+        /// Print the scan plan: what each level of the index pruned, and how
+        /// much of the archive was actually decoded. See docs/scan-plan.md.
+        #[arg(long)]
+        explain: bool,
     },
     /// Replay a range, at wall-clock speed or as fast as it reads.
     Replay {
@@ -353,6 +357,18 @@ enum Command {
         /// snappy or zstd.
         #[arg(long, default_value = "snappy")]
         compression: String,
+        /// Rows per row group in the copy.
+        ///
+        /// Defaults to the recorder's, which is also a correction: without it
+        /// a transcoded archive took Parquet's own default of a million rows
+        /// per group and had a completely different physical layout from the
+        /// one it copied.
+        #[arg(long)]
+        row_group_rows: Option<usize>,
+        /// Rows per data page in the copy, which is the granularity a range
+        /// query can stop reading at. See docs/scan-plan.md.
+        #[arg(long)]
+        data_page_rows: Option<usize>,
     },
     /// Emit per-venue coverage over time as JSON.
     ///
@@ -681,7 +697,13 @@ fn coverage_json(archives: &[String], bucket_secs: i64) -> Result<String> {
 /// Reads with whatever the source used and writes with the requested codec,
 /// batch for batch, so the rows and the schema come through untouched. The
 /// manifest is rewritten because the byte counts change and nothing else does.
-fn transcode(archive: &str, out: &str, compression: &str) -> Result<(u64, usize, u64, u64)> {
+fn transcode(
+    archive: &str,
+    out: &str,
+    compression: &str,
+    row_group_rows: usize,
+    data_page_rows: usize,
+) -> Result<(u64, usize, u64, u64)> {
     use parquet::arrow::ArrowWriter;
     use parquet::basic::{Compression, ZstdLevel};
     use parquet::file::properties::WriterProperties;
@@ -707,6 +729,8 @@ fn transcode(archive: &str, out: &str, compression: &str) -> Result<(u64, usize,
         }
         let props = WriterProperties::builder()
             .set_compression(codec)
+            .set_max_row_group_row_count(Some(row_group_rows))
+            .set_data_page_row_count_limit(data_page_rows)
             .set_created_by(format!("tickvault {} transcode", env!("CARGO_PKG_VERSION")))
             .build();
         let sink = std::fs::File::create(&target)?;
@@ -1253,6 +1277,7 @@ async fn main() -> Result<()> {
             to,
             bar_secs,
             depth,
+            explain,
         } => {
             let symbol = Symbol::parse(&symbol).map_err(anyhow::Error::msg)?;
             let reconstructor = Reconstructor::open(&archive)?;
@@ -1272,9 +1297,16 @@ async fn main() -> Result<()> {
             if interval <= 0 {
                 bail!("--bar-secs must be positive");
             }
+            let started = std::time::Instant::now();
             let mut cursor = query.cursor(&reconstructor)?;
             let bars = tickvault::query::aggregate::bars(&mut cursor, interval)?;
+            let elapsed = started.elapsed();
 
+            if explain {
+                println!("{}", cursor.explain());
+                println!("elapsed     {:>8.3} s", elapsed.as_secs_f64());
+                println!();
+            }
             println!(
                 "{venue} {symbol} over {:.3}s: {} messages, {} rows, {} file(s), from {}",
                 query.duration_nanos() as f64 / 1e9,
@@ -1533,10 +1565,17 @@ async fn main() -> Result<()> {
             archive,
             out,
             compression,
+            row_group_rows,
+            data_page_rows,
         } => {
-            let (rows, files, before, after) = transcode(&archive, &out, &compression)?;
+            let defaults = tickvault::store::writer::WriterConfig::default();
+            let row_group_rows = row_group_rows.unwrap_or(defaults.row_group_size);
+            let data_page_rows = data_page_rows.unwrap_or(defaults.data_page_rows);
+            let (rows, files, before, after) =
+                transcode(&archive, &out, &compression, row_group_rows, data_page_rows)?;
             println!(
-                "{files} files, {rows} rows: {:.2} MB -> {:.2} MB as {compression}",
+                "{files} files, {rows} rows: {:.2} MB -> {:.2} MB as {compression} \
+                 ({row_group_rows} rows/group, {data_page_rows} rows/page)",
                 before as f64 / 1e6,
                 after as f64 / 1e6
             );
