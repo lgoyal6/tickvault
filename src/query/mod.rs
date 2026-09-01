@@ -132,7 +132,13 @@ impl BookCursor {
             ));
         }
         let feed_depth = files.first().and_then(|f| f.feed_depth);
-        files.retain(|f| f.last_recv_wall > query.from_wall && f.first_recv_wall <= query.to_wall);
+        // Read before the prune, on purpose: the feed's depth window is a
+        // property of the partition, and a range that prunes away the first
+        // file still has to truncate exactly as the recorder did.
+        let (files, files_pruned) = crate::store::scan::files_in_range(
+            files,
+            &crate::store::scan::Predicate::range(Some(query.from_wall), query.to_wall),
+        );
 
         let mut replayer = BookReplayer::new(query.symbol.clone(), start.book_level, feed_depth);
         replayer.seed_l2(
@@ -153,7 +159,9 @@ impl BookCursor {
         }
 
         let stream = MessageStream::new(
-            RowStream::new(reader.root(), files, query.to_wall).after(query.from_wall),
+            RowStream::new(reader.root(), files, query.to_wall)
+                .manifest_pruned(files_pruned)
+                .after(query.from_wall),
         );
 
         Ok(BookCursor {
@@ -253,6 +261,14 @@ impl BookCursor {
     /// rather than with the archive.
     pub fn files_opened(&self) -> usize {
         self.stream.files_opened()
+    }
+
+    /// What the scan plan skipped, so far.
+    ///
+    /// Counts what has been opened, not what will be: the stream is lazy, so
+    /// this is only the whole plan once the cursor is exhausted.
+    pub fn explain(&self) -> &crate::store::scan::Explain {
+        self.stream.explain()
     }
 
     /// Rows decoded and not yet consumed, for the memory-bound test.

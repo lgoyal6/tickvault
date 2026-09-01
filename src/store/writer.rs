@@ -83,7 +83,23 @@ pub struct WriterConfig {
     /// bound; phase 3's compaction is what puts them back together.
     pub max_file_age: Duration,
     /// Rows per Parquet row group.
+    ///
+    /// The coarse index. A reader can skip a whole group on its recorded min
+    /// and max without touching a page, so smaller groups prune harder; but
+    /// every group is a fresh compression context and its own footer entry, so
+    /// smaller groups also cost bytes.
     pub row_group_size: usize,
+    /// Rows per Parquet data page.
+    ///
+    /// The fine index, and the one that decides what a short query costs. The
+    /// page index in the footer carries a min and max per page, so this is the
+    /// granularity at which a range predicate can stop reading. Parquet's
+    /// default is 20,000, which at a 50,000-row group is three pages and
+    /// therefore barely finer than the group itself.
+    ///
+    /// It is not free: more pages means more page-index entries in the footer,
+    /// and a smaller compression context per page.
+    pub data_page_rows: usize,
     /// zstd level. Three is a good ratio for order book data without making the
     /// writer the bottleneck, which is the thing this phase is measuring.
     pub zstd_level: i32,
@@ -96,6 +112,7 @@ impl Default for WriterConfig {
             max_rows_per_file: 250_000,
             max_file_age: Duration::from_secs(60),
             row_group_size: 50_000,
+            data_page_rows: 20_000,
             zstd_level: 3,
         }
     }
@@ -231,6 +248,7 @@ impl ArchiveWriter {
         Ok(WriterProperties::builder()
             .set_compression(Compression::ZSTD(level))
             .set_max_row_group_row_count(Some(self.config.row_group_size))
+            .set_data_page_row_count_limit(self.config.data_page_rows)
             .set_created_by(format!("tickvault {}", env!("CARGO_PKG_VERSION")))
             .build())
     }

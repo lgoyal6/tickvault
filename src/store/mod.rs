@@ -15,5 +15,6 @@ pub mod recovery;
 #[cfg(feature = "record")]
 pub mod retention;
 pub mod rows;
+pub mod scan;
 pub mod schema;
 pub mod writer;
