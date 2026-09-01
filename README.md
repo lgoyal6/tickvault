@@ -253,6 +253,35 @@ files the manifest never listed, discards abandoned compactions, and records the
 truncation point. The gate kills the process with a real `SIGKILL` at randomized
 offsets during sustained write, restarts, and asserts every file reads back.
 
+**A query reads the index, not the file.** Every question the archive is asked
+is a range of `recv_wall` inside one partition, and the archive is written in
+arrival order, so that column is sorted. Four levels of pruning follow from
+that: the partition directory, the manifest's per-file zone map, Parquet's
+row group statistics, and its page index. `tickvault query --explain` prints
+what each one removed.
+
+Asking for thirty seconds out of a compacted 45 minute recording of Coinbase
+BTC-USD, 788,834 rows in one file:
+
+```
+manifest           1 of        1 files      (0.0% pruned on recorded span)
+row groups         1 of       16 groups     (93.8% pruned on footer statistics)
+pages              1 of        3 pages      (66.7% pruned on the page index)
+rows           20418 of   788834 rows       (2.59% decoded)
+columns           14 of       24 columns    (5.4% of bytes in scope)
+```
+
+Compaction is what makes that the interesting case: once a day is one file the
+manifest's zone map prunes nothing, and the footer and page index are all
+that is left.
+
+It works because one column is clustered, and a gate says so out loud: a
+predicate on `price` prunes nothing, because every row group's price range
+spans most of the book, and `tests/gate_scan.rs` asserts that rather than
+leaving the headline number to imply pruning is free.
+[`docs/scan-plan.md`](docs/scan-plan.md) has the reasoning and the tradeoff in
+page granularity.
+
 ## Running it as a service
 
 `record` captures one venue for a fixed time and prints a report when it stops.
@@ -436,6 +465,7 @@ buffers to polars without a copy. Details in [`docs/python.md`](docs/python.md).
 | `recorder` | raw frame capture, which is what makes the gates possible |
 | `pipeline` | the bounded channel, the backpressure decision, and its cost |
 | `store` | Parquet schema, writer, manifest, recovery, reader, compaction |
+| `store::scan` | what a query reads and what it skips, and the explain for it |
 | `reconstruct` | rebuild a book at an instant, with checkpoints |
 | `query` | streaming cursor, aggregations, and paced replay |
 | `bindings` | the pyo3 crate and the Python package built on it |
@@ -449,7 +479,8 @@ symbol, so it packs them. `tickvault plan` shows the reasoning.
 Further reading: [`docs/venues.md`](docs/venues.md) for the per-venue findings,
 [`docs/schema.md`](docs/schema.md) for the columns,
 [`docs/reconstruction.md`](docs/reconstruction.md),
-[`docs/querying.md`](docs/querying.md), [`docs/python.md`](docs/python.md).
+[`docs/querying.md`](docs/querying.md),
+[`docs/scan-plan.md`](docs/scan-plan.md), [`docs/python.md`](docs/python.md).
 
 ## Build and test
 
@@ -498,6 +529,15 @@ cargo run --release -- replay  --archive ./archive --venue kraken --symbol BTC-U
   re-snapshot if the venue was merely quiet. Waiting instead costs the data.
 - **Bybit's REST cross-check is geo-blocked** from a US address. Its websocket
   is fine, so recording works and the out-of-band comparison does not.
+- **Only time prunes.** The scan planner pushes down a range on `recv_wall` and
+  the one predicate `event == Snapshot`. Nothing else in the schema is
+  clustered, so a question about a price or an order id reads everything the
+  time range does. There is no expression pushdown and no Bloom filter,
+  because nothing asks those questions of this archive.
+- **A query reads one file at a time.** The read path holds one open file and
+  one decoded batch on purpose, so a query over a day costs the same resident
+  memory as a query over a second. Reading files concurrently would trade that
+  bound for wall clock.
 - **Retention is not free.** Dropping a partition's oldest file can drop the
   snapshot the deltas after it were applied to. Reconstruction then reports its
   origin as the first archived row rather than a venue snapshot, so the loss is
