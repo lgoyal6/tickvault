@@ -35,8 +35,30 @@ its front page.**
 
 ```bash
 cargo run --release -- record --venue kraken --seconds 60 --archive ./archive
+cp tickvault.example.toml tickvault.toml
 cargo run --release -- serve  --config tickvault.toml    # every venue, supervised
 ```
+
+### Or read the archive that is already here
+
+Recording needs a live venue and a minute of your time, and neither proves the
+dataset is worth anything. Five minutes per venue is committed at
+`docs/data/` - the same six archives the demo page reads - so the read half can
+be exercised on real recorded data with no network at all:
+
+```bash
+cargo run --release -- verify --archive docs/data/kraken
+cargo run --release -- query  --archive docs/data/kraken --venue kraken --symbol BTC-USD --bar-secs 10
+cargo run --release --example versioned_read -- docs/data/coinbase
+```
+
+`verify` reads the pages rather than trusting the footer, `query` builds OHLC
+bars off the clustered column, and
+[`examples/versioned_read.rs`](examples/versioned_read.rs) is the pattern a
+consumer of a published dataset should copy: verify, then read the price scale
+out of the file, then divide by it. `volume` comes back `unknown` on Kraken
+rather than `0`, which is rule 6 of the honesty rules doing its job on the very
+first thing a stranger runs.
 
 ## Six venues, five validation schemes
 
