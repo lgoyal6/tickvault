@@ -156,9 +156,20 @@ pub fn compact_partition(
             .map_err(|e| Error::Other(format!("opening {}: {e}", partial.display())))?;
         // In time order, so the compacted file reads the same as the sequence
         // of files it replaces.
+        let target = book_schema();
         for source in &sources {
             bytes_before += source.bytes;
             for batch in read_batches(root.join(&source.path))? {
+                // The writer was opened on the current schema, and Arrow does
+                // not refuse a batch that merely has more columns than that:
+                // it writes the ones it recognises and drops the rest without
+                // a word. Compaction would then replace a file that had a
+                // column with one that does not, and the manifest would call
+                // the swap complete. Checked here rather than trusted, because
+                // the whole point of compaction is that it loses nothing.
+                if let Some(why) = schema_conflict(&target, &batch.schema()) {
+                    return Err(Error::Other(format!("compacting {}: {why}", source.path)));
+                }
                 rows += batch.num_rows() as u64;
                 writer
                     .write(&batch)
@@ -211,6 +222,68 @@ pub fn compact_partition(
         bytes_after,
         partitions_skipped: 0,
     })
+}
+
+/// Describe how `found` differs from `target`, or `None` when it does not.
+///
+/// Compares names, types and nullability and nothing else. A field's own
+/// documentation metadata has changed between releases without the data
+/// changing at all, and refusing to compact over a reworded doc string would
+/// make this check a nuisance rather than a safeguard.
+fn schema_conflict(
+    target: &arrow::datatypes::Schema,
+    found: &arrow::datatypes::Schema,
+) -> Option<String> {
+    let shape = |s: &arrow::datatypes::Schema| -> Vec<(String, String, bool)> {
+        s.fields()
+            .iter()
+            .map(|f| {
+                (
+                    f.name().clone(),
+                    format!("{}", f.data_type()),
+                    f.is_nullable(),
+                )
+            })
+            .collect()
+    };
+    let (want, got) = (shape(target), shape(found));
+    if want == got {
+        return None;
+    }
+    let names = |v: &[(String, String, bool)]| -> Vec<String> {
+        v.iter().map(|(n, _, _)| n.clone()).collect()
+    };
+    let extra: Vec<String> = names(&got)
+        .into_iter()
+        .filter(|n| !names(&want).contains(n))
+        .collect();
+    let missing: Vec<String> = names(&want)
+        .into_iter()
+        .filter(|n| !names(&got).contains(n))
+        .collect();
+    let mut retyped = Vec::new();
+    for (name, ty, null) in &got {
+        if let Some((_, want_ty, want_null)) = want.iter().find(|(n, _, _)| n == name)
+            && (want_ty != ty || want_null != null)
+        {
+            retyped.push(format!("{name} is {ty} here and {want_ty} in this build"));
+        }
+    }
+    let mut parts = Vec::new();
+    if !extra.is_empty() {
+        parts.push(format!(
+            "has column(s) this build would drop: {}",
+            extra.join(", ")
+        ));
+    }
+    if !missing.is_empty() {
+        parts.push(format!("is missing column(s): {}", missing.join(", ")));
+    }
+    parts.extend(retyped);
+    Some(format!(
+        "schema does not match this build's, so compacting it would not preserve it ({})",
+        parts.join("; ")
+    ))
 }
 
 /// Compact every partition in the archive.
