@@ -17,6 +17,7 @@
 //! - [`store`] the Parquet archive, its manifest, and crash recovery
 //! - [`reconstruct`] rebuilding a book at an arbitrary instant
 //! - [`query`] streaming reads, aggregations, and paced replay
+//! - [`features`] point-in-time features: availability time, not event time
 //!
 //! Reading an archive needs none of the capture half, so `venue`, `transport`,
 //! `session`, `recorder` and `pipeline` sit behind the default `record`
@@ -28,6 +29,7 @@ pub mod clock;
 #[cfg(feature = "record")]
 pub mod config;
 pub mod error;
+pub mod features;
 pub mod fixed;
 pub mod gap;
 pub mod latency;
