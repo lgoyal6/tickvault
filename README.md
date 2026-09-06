@@ -507,7 +507,7 @@ Further reading: [`docs/venues.md`](docs/venues.md) for the per-venue findings,
 ## Build and test
 
 ```bash
-cargo test                     # 382 tests, 5 ignored
+cargo test                     # 391 tests, 5 ignored
 cargo test -- --ignored        # real SIGKILLs, restore drills, live venue reconciliation
 
 cd bindings
