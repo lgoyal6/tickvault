@@ -29,6 +29,15 @@ pub struct FileSummary {
     pub symbol: Option<Symbol>,
     /// What the rows are, read from the file rather than from its path.
     pub book_level: crate::types::BookLevel,
+    /// The decimal scale the file declares for `price` and `qty`.
+    ///
+    /// `None` when the file states nothing, which is not the same as agreeing:
+    /// a file written before the declaration existed cannot be checked, and
+    /// refusing it would be refusing data that is very probably fine. A file
+    /// that states a *different* scale is another matter, because nothing else
+    /// about it looks wrong: the column is still an `Int64` and the numbers are
+    /// still plausible, just off by a factor of a thousand.
+    pub price_scale: Option<u32>,
 }
 
 /// Open a file and read it through, returning what is really in it.
@@ -38,8 +47,17 @@ pub struct FileSummary {
 pub fn inspect(path: impl AsRef<Path>) -> Result<FileSummary> {
     let path = path.as_ref();
     let file = File::open(path)?;
-    let reader = ParquetRecordBatchReaderBuilder::try_new(file)
-        .map_err(|e| Error::Other(format!("{}: unreadable: {e}", path.display())))?
+    let builder = ParquetRecordBatchReaderBuilder::try_new(file)
+        .map_err(|e| Error::Other(format!("{}: unreadable: {e}", path.display())))?;
+    // Read off the builder rather than off a batch: the file-level metadata
+    // rides on the schema the footer carries, and the per-batch schema the
+    // reader yields does not have it.
+    let price_scale = builder
+        .schema()
+        .metadata()
+        .get("tickvault.price_scale")
+        .and_then(|s| s.parse::<u32>().ok());
+    let reader = builder
         .build()
         .map_err(|e| Error::Other(format!("{}: unreadable: {e}", path.display())))?;
 
@@ -99,6 +117,7 @@ pub fn inspect(path: impl AsRef<Path>) -> Result<FileSummary> {
         last_recv_wall: last.unwrap_or(0),
         venue,
         symbol,
+        price_scale,
     })
 }
 
@@ -124,12 +143,31 @@ pub struct VerifyReport {
     pub failures: Vec<(String, String)>,
     /// Files whose real row count disagrees with what the manifest claims.
     pub row_count_mismatches: Vec<(String, u64, u64)>,
+    /// Files whose rows are a different instrument than the manifest claims,
+    /// as `(path, claimed, found)`.
+    ///
+    /// The manifest is what selects files for a rebuild, and the replayer
+    /// stamps the *requested* symbol onto every row it applies. So a record
+    /// naming the wrong instrument does not produce an empty book or an error:
+    /// it produces a `BTC-USD` book built from `BTC-USDT` prices, which is
+    /// wrong by tens of dollars and looks entirely healthy. The same argument
+    /// applies to the venue, which partitions the archive for the same reason.
+    pub mislabelled: Vec<(String, String, String)>,
+    /// Files this build cannot read correctly, with why, as `(path, why)`.
+    ///
+    /// Separate from `failures`, which are files that do not open at all. These
+    /// open perfectly well and would hand back numbers, which is why they are
+    /// the more dangerous kind.
+    pub incompatible: Vec<(String, String)>,
 }
 
 impl VerifyReport {
     /// True when every file the archive vouches for opened and matched.
     pub fn is_clean(&self) -> bool {
-        self.failures.is_empty() && self.row_count_mismatches.is_empty()
+        self.failures.is_empty()
+            && self.row_count_mismatches.is_empty()
+            && self.mislabelled.is_empty()
+            && self.incompatible.is_empty()
     }
 }
 
@@ -137,17 +175,26 @@ impl std::fmt::Display for VerifyReport {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} files, {} rows, {} unreadable, {} row-count mismatches",
+            "{} files, {} rows, {} unreadable, {} row-count mismatches, \
+             {} mislabelled, {} incompatible",
             self.files_checked,
             self.rows_read,
             self.failures.len(),
-            self.row_count_mismatches.len()
+            self.row_count_mismatches.len(),
+            self.mislabelled.len(),
+            self.incompatible.len()
         )?;
         for (path, why) in &self.failures {
             write!(f, "\n  unreadable {path}: {why}")?;
         }
         for (path, claimed, found) in &self.row_count_mismatches {
             write!(f, "\n  {path}: manifest says {claimed} rows, found {found}")?;
+        }
+        for (path, claimed, found) in &self.mislabelled {
+            write!(f, "\n  {path}: manifest says {claimed}, rows say {found}")?;
+        }
+        for (path, why) in &self.incompatible {
+            write!(f, "\n  {path}: {why}")?;
         }
         Ok(())
     }
@@ -210,6 +257,34 @@ impl ArchiveReader {
                             record.path.clone(),
                             record.rows,
                             summary.rows,
+                        ));
+                    }
+                    // The venue and symbol are read out of the rows themselves,
+                    // so this compares what the file holds against what the
+                    // manifest promises rather than one copy of the claim
+                    // against another. An empty file has neither to compare.
+                    let claimed = format!("{} {}", record.venue, record.symbol);
+                    if let (Some(venue), Some(symbol)) = (summary.venue, summary.symbol.as_ref())
+                        && (venue != record.venue || *symbol != record.symbol)
+                    {
+                        report.mislabelled.push((
+                            record.path.clone(),
+                            claimed,
+                            format!("{venue} {symbol}"),
+                        ));
+                    }
+                    // A scale we do not hold reads back as a plausible number
+                    // in the right type, so it has to be refused here or it is
+                    // never noticed at all.
+                    if let Some(scale) = summary.price_scale
+                        && scale != crate::store::schema::PRICE_SCALE
+                    {
+                        report.incompatible.push((
+                            record.path.clone(),
+                            format!(
+                                "declares price scale 1e-{scale}; this build reads 1e-{}",
+                                crate::store::schema::PRICE_SCALE
+                            ),
                         ));
                     }
                 }
