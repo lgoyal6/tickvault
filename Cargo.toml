@@ -32,6 +32,10 @@ exclude = [
     "viewer/**",
     ".github/**",
     "scripts/**",
+    # The downstream Kafka/Spark package. It consumes an archive and the
+    # recorder does not know it exists, so it has no business in the crate
+    # someone installs to record or read one.
+    "streaming/**",
 ]
 
 [features]
