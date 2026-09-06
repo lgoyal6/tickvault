@@ -36,6 +36,10 @@ exclude = [
     # recorder does not know it exists, so it has no business in the crate
     # someone installs to record or read one.
     "streaming/**",
+    # The research harness, for the same reason: it is a consumer of an
+    # archive, built on the published Python bindings, and nothing in the
+    # library imports it.
+    "research/**",
 ]
 
 [features]
