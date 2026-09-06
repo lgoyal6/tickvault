@@ -50,6 +50,10 @@ def test_verify_reads_every_file_back(kraken_archive):
     report = tickvault.open(kraken_archive).verify()
     assert report["clean"] is True
     assert report["unreadable"] == []
+    # The two kinds of file that open and still lie: rows of another
+    # instrument, or a price scale this build does not read.
+    assert report["mislabelled"] == []
+    assert report["incompatible"] == []
     assert report["truncations"] == 0
     assert report["files"] == 1 and report["rows"] > 0
 

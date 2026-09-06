@@ -556,6 +556,27 @@ impl Archive {
                 .map(|(p, why)| (p.clone(), why.clone()))
                 .collect::<Vec<_>>(),
         )?;
+        // Both kinds of file that open perfectly well and would still hand
+        // back a wrong number: one whose rows are a different instrument than
+        // the manifest claims, and one written at a scale this build does not
+        // read. They clear `clean`, so leaving them out of the dict would give
+        // a caller a failed verification with nothing in it to look at.
+        out.set_item(
+            "mislabelled",
+            report
+                .mislabelled
+                .iter()
+                .map(|(p, claimed, found)| (p.clone(), claimed.clone(), found.clone()))
+                .collect::<Vec<_>>(),
+        )?;
+        out.set_item(
+            "incompatible",
+            report
+                .incompatible
+                .iter()
+                .map(|(p, why)| (p.clone(), why.clone()))
+                .collect::<Vec<_>>(),
+        )?;
         out.set_item(
             "truncations",
             self.reconstructor.reader().manifest().truncations().len(),
