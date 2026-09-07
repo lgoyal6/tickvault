@@ -1,0 +1,4 @@
+feast==0.66.0
+duckdb==1.5.5
+pandas==2.3.3
+pyarrow==25.0.1
