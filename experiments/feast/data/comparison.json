@@ -1,0 +1,566 @@
+{
+  "cases": [
+    {
+      "as_of": -1000000000,
+      "tickvault": {
+        "value": null,
+        "freshness": "missing"
+      },
+      "feast_event_time": 2000000,
+      "feast_availability": null,
+      "duckdb": {
+        "value": null,
+        "freshness": "missing"
+      },
+      "feast_event_time_agrees": false,
+      "feast_availability_agrees": true,
+      "duckdb_agrees": true,
+      "duckdb_freshness_agrees": true
+    },
+    {
+      "as_of": 500000000,
+      "tickvault": {
+        "value": 1000000,
+        "freshness": "fresh"
+      },
+      "feast_event_time": 1000000,
+      "feast_availability": 1000000,
+      "duckdb": {
+        "value": 1000000,
+        "event_time": 0,
+        "available_at": 250000000,
+        "freshness": "fresh"
+      },
+      "feast_event_time_agrees": true,
+      "feast_availability_agrees": true,
+      "duckdb_agrees": true,
+      "duckdb_freshness_agrees": true
+    },
+    {
+      "as_of": 997500000000,
+      "tickvault": {
+        "value": 1000997,
+        "freshness": "fresh"
+      },
+      "feast_event_time": 1000997,
+      "feast_availability": 1000997,
+      "duckdb": {
+        "value": 1000997,
+        "event_time": 997000000000,
+        "available_at": 997250000000,
+        "freshness": "fresh"
+      },
+      "feast_event_time_agrees": true,
+      "feast_availability_agrees": true,
+      "duckdb_agrees": true,
+      "duckdb_freshness_agrees": true
+    },
+    {
+      "as_of": 1994500000000,
+      "tickvault": {
+        "value": 1001994,
+        "freshness": "fresh"
+      },
+      "feast_event_time": 1001994,
+      "feast_availability": 1001994,
+      "duckdb": {
+        "value": 1001994,
+        "event_time": 1994000000000,
+        "available_at": 1994250000000,
+        "freshness": "fresh"
+      },
+      "feast_event_time_agrees": true,
+      "feast_availability_agrees": true,
+      "duckdb_agrees": true,
+      "duckdb_freshness_agrees": true
+    },
+    {
+      "as_of": 2991500000000,
+      "tickvault": {
+        "value": 1002991,
+        "freshness": "fresh"
+      },
+      "feast_event_time": 1002991,
+      "feast_availability": 1002991,
+      "duckdb": {
+        "value": 1002991,
+        "event_time": 2991000000000,
+        "available_at": 2991250000000,
+        "freshness": "fresh"
+      },
+      "feast_event_time_agrees": true,
+      "feast_availability_agrees": true,
+      "duckdb_agrees": true,
+      "duckdb_freshness_agrees": true
+    },
+    {
+      "as_of": 3988500000000,
+      "tickvault": {
+        "value": 1003988,
+        "freshness": "fresh"
+      },
+      "feast_event_time": 1003988,
+      "feast_availability": 1003988,
+      "duckdb": {
+        "value": 1003988,
+        "event_time": 3988000000000,
+        "available_at": 3988250000000,
+        "freshness": "fresh"
+      },
+      "feast_event_time_agrees": true,
+      "feast_availability_agrees": true,
+      "duckdb_agrees": true,
+      "duckdb_freshness_agrees": true
+    },
+    {
+      "as_of": 4985500000000,
+      "tickvault": {
+        "value": 1004985,
+        "freshness": "fresh"
+      },
+      "feast_event_time": 1004985,
+      "feast_availability": 1004985,
+      "duckdb": {
+        "value": 1004985,
+        "event_time": 4985000000000,
+        "available_at": 4985250000000,
+        "freshness": "fresh"
+      },
+      "feast_event_time_agrees": true,
+      "feast_availability_agrees": true,
+      "duckdb_agrees": true,
+      "duckdb_freshness_agrees": true
+    },
+    {
+      "as_of": 5982500000000,
+      "tickvault": {
+        "value": 1005982,
+        "freshness": "fresh"
+      },
+      "feast_event_time": 1005982,
+      "feast_availability": 1005982,
+      "duckdb": {
+        "value": 1005982,
+        "event_time": 5982000000000,
+        "available_at": 5982250000000,
+        "freshness": "fresh"
+      },
+      "feast_event_time_agrees": true,
+      "feast_availability_agrees": true,
+      "duckdb_agrees": true,
+      "duckdb_freshness_agrees": true
+    },
+    {
+      "as_of": 6979500000000,
+      "tickvault": {
+        "value": 1006979,
+        "freshness": "fresh"
+      },
+      "feast_event_time": 1006979,
+      "feast_availability": 1006979,
+      "duckdb": {
+        "value": 1006979,
+        "event_time": 6979000000000,
+        "available_at": 6979250000000,
+        "freshness": "fresh"
+      },
+      "feast_event_time_agrees": true,
+      "feast_availability_agrees": true,
+      "duckdb_agrees": true,
+      "duckdb_freshness_agrees": true
+    },
+    {
+      "as_of": 7976500000000,
+      "tickvault": {
+        "value": 1007976,
+        "freshness": "fresh"
+      },
+      "feast_event_time": 1007976,
+      "feast_availability": 1007976,
+      "duckdb": {
+        "value": 1007976,
+        "event_time": 7976000000000,
+        "available_at": 7976250000000,
+        "freshness": "fresh"
+      },
+      "feast_event_time_agrees": true,
+      "feast_availability_agrees": true,
+      "duckdb_agrees": true,
+      "duckdb_freshness_agrees": true
+    },
+    {
+      "as_of": 8973500000000,
+      "tickvault": {
+        "value": 1008973,
+        "freshness": "fresh"
+      },
+      "feast_event_time": 1008973,
+      "feast_availability": 1008973,
+      "duckdb": {
+        "value": 1008973,
+        "event_time": 8973000000000,
+        "available_at": 8973250000000,
+        "freshness": "fresh"
+      },
+      "feast_event_time_agrees": true,
+      "feast_availability_agrees": true,
+      "duckdb_agrees": true,
+      "duckdb_freshness_agrees": true
+    },
+    {
+      "as_of": 9970500000000,
+      "tickvault": {
+        "value": 1009970,
+        "freshness": "fresh"
+      },
+      "feast_event_time": 1009970,
+      "feast_availability": 1009970,
+      "duckdb": {
+        "value": 1009970,
+        "event_time": 9970000000000,
+        "available_at": 9970250000000,
+        "freshness": "fresh"
+      },
+      "feast_event_time_agrees": true,
+      "feast_availability_agrees": true,
+      "duckdb_agrees": true,
+      "duckdb_freshness_agrees": true
+    },
+    {
+      "as_of": 9999000000000,
+      "tickvault": {
+        "value": 1009998,
+        "freshness": "fresh"
+      },
+      "feast_event_time": 1009999,
+      "feast_availability": 1009998,
+      "duckdb": {
+        "value": 1009998,
+        "event_time": 9998000000000,
+        "available_at": 9998250000000,
+        "freshness": "fresh"
+      },
+      "feast_event_time_agrees": false,
+      "feast_availability_agrees": true,
+      "duckdb_agrees": true,
+      "duckdb_freshness_agrees": true
+    },
+    {
+      "as_of": 10000000000000,
+      "tickvault": {
+        "value": 1009999,
+        "freshness": "fresh"
+      },
+      "feast_event_time": 1009999,
+      "feast_availability": 1009999,
+      "duckdb": {
+        "value": 1009999,
+        "event_time": 9999000000000,
+        "available_at": 9999250000000,
+        "freshness": "fresh"
+      },
+      "feast_event_time_agrees": true,
+      "feast_availability_agrees": true,
+      "duckdb_agrees": true,
+      "duckdb_freshness_agrees": true
+    },
+    {
+      "as_of": 10001000000000,
+      "tickvault": {
+        "value": 1009999,
+        "freshness": "fresh"
+      },
+      "feast_event_time": 1010001,
+      "feast_availability": 1009999,
+      "duckdb": {
+        "value": 1009999,
+        "event_time": 9999000000000,
+        "available_at": 9999250000000,
+        "freshness": "fresh"
+      },
+      "feast_event_time_agrees": false,
+      "feast_availability_agrees": true,
+      "duckdb_agrees": true,
+      "duckdb_freshness_agrees": true
+    },
+    {
+      "as_of": 10003000000000,
+      "tickvault": {
+        "value": 1010002,
+        "freshness": "fresh"
+      },
+      "feast_event_time": 1010003,
+      "feast_availability": 999999,
+      "duckdb": {
+        "value": 1010002,
+        "event_time": 10002000000000,
+        "available_at": 10002250000000,
+        "freshness": "fresh"
+      },
+      "feast_event_time_agrees": false,
+      "feast_availability_agrees": false,
+      "duckdb_agrees": true,
+      "duckdb_freshness_agrees": true
+    },
+    {
+      "as_of": 10004000000000,
+      "tickvault": {
+        "value": 1010003,
+        "freshness": "fresh"
+      },
+      "feast_event_time": 1010004,
+      "feast_availability": 1010003,
+      "duckdb": {
+        "value": 1010003,
+        "event_time": 10003000000000,
+        "available_at": 10003250000000,
+        "freshness": "fresh"
+      },
+      "feast_event_time_agrees": false,
+      "feast_availability_agrees": true,
+      "duckdb_agrees": true,
+      "duckdb_freshness_agrees": true
+    },
+    {
+      "as_of": 10967500000000,
+      "tickvault": {
+        "value": 1010967,
+        "freshness": "fresh"
+      },
+      "feast_event_time": 1010967,
+      "feast_availability": 1010967,
+      "duckdb": {
+        "value": 1010967,
+        "event_time": 10967000000000,
+        "available_at": 10967250000000,
+        "freshness": "fresh"
+      },
+      "feast_event_time_agrees": true,
+      "feast_availability_agrees": true,
+      "duckdb_agrees": true,
+      "duckdb_freshness_agrees": true
+    },
+    {
+      "as_of": 11964500000000,
+      "tickvault": {
+        "value": 1011964,
+        "freshness": "fresh"
+      },
+      "feast_event_time": 1011964,
+      "feast_availability": 1011964,
+      "duckdb": {
+        "value": 1011964,
+        "event_time": 11964000000000,
+        "available_at": 11964250000000,
+        "freshness": "fresh"
+      },
+      "feast_event_time_agrees": true,
+      "feast_availability_agrees": true,
+      "duckdb_agrees": true,
+      "duckdb_freshness_agrees": true
+    },
+    {
+      "as_of": 12961500000000,
+      "tickvault": {
+        "value": 1012961,
+        "freshness": "fresh"
+      },
+      "feast_event_time": 1012961,
+      "feast_availability": 1012961,
+      "duckdb": {
+        "value": 1012961,
+        "event_time": 12961000000000,
+        "available_at": 12961250000000,
+        "freshness": "fresh"
+      },
+      "feast_event_time_agrees": true,
+      "feast_availability_agrees": true,
+      "duckdb_agrees": true,
+      "duckdb_freshness_agrees": true
+    },
+    {
+      "as_of": 13958500000000,
+      "tickvault": {
+        "value": 1013958,
+        "freshness": "fresh"
+      },
+      "feast_event_time": 1013958,
+      "feast_availability": 1013958,
+      "duckdb": {
+        "value": 1013958,
+        "event_time": 13958000000000,
+        "available_at": 13958250000000,
+        "freshness": "fresh"
+      },
+      "feast_event_time_agrees": true,
+      "feast_availability_agrees": true,
+      "duckdb_agrees": true,
+      "duckdb_freshness_agrees": true
+    },
+    {
+      "as_of": 14955500000000,
+      "tickvault": {
+        "value": 1014955,
+        "freshness": "fresh"
+      },
+      "feast_event_time": 1014955,
+      "feast_availability": 1014955,
+      "duckdb": {
+        "value": 1014955,
+        "event_time": 14955000000000,
+        "available_at": 14955250000000,
+        "freshness": "fresh"
+      },
+      "feast_event_time_agrees": true,
+      "feast_availability_agrees": true,
+      "duckdb_agrees": true,
+      "duckdb_freshness_agrees": true
+    },
+    {
+      "as_of": 15952500000000,
+      "tickvault": {
+        "value": 1015952,
+        "freshness": "fresh"
+      },
+      "feast_event_time": 1015952,
+      "feast_availability": 1015952,
+      "duckdb": {
+        "value": 1015952,
+        "event_time": 15952000000000,
+        "available_at": 15952250000000,
+        "freshness": "fresh"
+      },
+      "feast_event_time_agrees": true,
+      "feast_availability_agrees": true,
+      "duckdb_agrees": true,
+      "duckdb_freshness_agrees": true
+    },
+    {
+      "as_of": 16949500000000,
+      "tickvault": {
+        "value": 1016949,
+        "freshness": "fresh"
+      },
+      "feast_event_time": 1016949,
+      "feast_availability": 1016949,
+      "duckdb": {
+        "value": 1016949,
+        "event_time": 16949000000000,
+        "available_at": 16949250000000,
+        "freshness": "fresh"
+      },
+      "feast_event_time_agrees": true,
+      "feast_availability_agrees": true,
+      "duckdb_agrees": true,
+      "duckdb_freshness_agrees": true
+    },
+    {
+      "as_of": 17946500000000,
+      "tickvault": {
+        "value": 1017946,
+        "freshness": "fresh"
+      },
+      "feast_event_time": 1017946,
+      "feast_availability": 1017946,
+      "duckdb": {
+        "value": 1017946,
+        "event_time": 17946000000000,
+        "available_at": 17946250000000,
+        "freshness": "fresh"
+      },
+      "feast_event_time_agrees": true,
+      "feast_availability_agrees": true,
+      "duckdb_agrees": true,
+      "duckdb_freshness_agrees": true
+    },
+    {
+      "as_of": 18943500000000,
+      "tickvault": {
+        "value": 1018943,
+        "freshness": "fresh"
+      },
+      "feast_event_time": 1018943,
+      "feast_availability": 1018943,
+      "duckdb": {
+        "value": 1018943,
+        "event_time": 18943000000000,
+        "available_at": 18943250000000,
+        "freshness": "fresh"
+      },
+      "feast_event_time_agrees": true,
+      "feast_availability_agrees": true,
+      "duckdb_agrees": true,
+      "duckdb_freshness_agrees": true
+    },
+    {
+      "as_of": 19940500000000,
+      "tickvault": {
+        "value": 1019940,
+        "freshness": "fresh"
+      },
+      "feast_event_time": 1019940,
+      "feast_availability": 1019940,
+      "duckdb": {
+        "value": 1019940,
+        "event_time": 19940000000000,
+        "available_at": 19940250000000,
+        "freshness": "fresh"
+      },
+      "feast_event_time_agrees": true,
+      "feast_availability_agrees": true,
+      "duckdb_agrees": true,
+      "duckdb_freshness_agrees": true
+    },
+    {
+      "as_of": 20050000000000,
+      "tickvault": {
+        "value": 1019999,
+        "freshness": "stale"
+      },
+      "feast_event_time": 2000000,
+      "feast_availability": null,
+      "duckdb": {
+        "value": 1019999,
+        "event_time": 19999000000000,
+        "available_at": 19999250000000,
+        "freshness": "stale"
+      },
+      "feast_event_time_agrees": false,
+      "feast_availability_agrees": false,
+      "duckdb_agrees": true,
+      "duckdb_freshness_agrees": true
+    },
+    {
+      "as_of": 20150000000000,
+      "tickvault": {
+        "value": 2000000,
+        "freshness": "age_unknown"
+      },
+      "feast_event_time": 2000000,
+      "feast_availability": null,
+      "duckdb": {
+        "value": 2000000,
+        "event_time": null,
+        "available_at": 20100000000000,
+        "freshness": "age_unknown"
+      },
+      "feast_event_time_agrees": true,
+      "feast_availability_agrees": false,
+      "duckdb_agrees": true,
+      "duckdb_freshness_agrees": true
+    }
+  ],
+  "timing": {
+    "feast_historical_bid_by_event_time_s": 2.9555,
+    "feast_historical_bid_by_availability_s": 1.4775,
+    "duckdb_view_all_points_s": 0.0519,
+    "points": 29
+  },
+  "summary": {
+    "points": 29,
+    "feast_event_time_agreements": 23,
+    "feast_availability_agreements": 26,
+    "duckdb_agreements": 29,
+    "duckdb_freshness_agreements": 29
+  }
+}

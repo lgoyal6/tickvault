@@ -1,0 +1,4 @@
+registry.db
+online_store.db
+.venv/
+__pycache__/

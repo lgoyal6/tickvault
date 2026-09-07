@@ -1,0 +1,247 @@
+{
+  "answers": [
+    {
+      "as_of": -1000000000,
+      "available_at": null,
+      "event_time": null,
+      "fresh_value": null,
+      "freshness": "missing",
+      "value": null
+    },
+    {
+      "as_of": 500000000,
+      "available_at": 250000000,
+      "event_time": 0,
+      "fresh_value": 1000000,
+      "freshness": "fresh",
+      "value": 1000000
+    },
+    {
+      "as_of": 997500000000,
+      "available_at": 997250000000,
+      "event_time": 997000000000,
+      "fresh_value": 1000997,
+      "freshness": "fresh",
+      "value": 1000997
+    },
+    {
+      "as_of": 1994500000000,
+      "available_at": 1994250000000,
+      "event_time": 1994000000000,
+      "fresh_value": 1001994,
+      "freshness": "fresh",
+      "value": 1001994
+    },
+    {
+      "as_of": 2991500000000,
+      "available_at": 2991250000000,
+      "event_time": 2991000000000,
+      "fresh_value": 1002991,
+      "freshness": "fresh",
+      "value": 1002991
+    },
+    {
+      "as_of": 3988500000000,
+      "available_at": 3988250000000,
+      "event_time": 3988000000000,
+      "fresh_value": 1003988,
+      "freshness": "fresh",
+      "value": 1003988
+    },
+    {
+      "as_of": 4985500000000,
+      "available_at": 4985250000000,
+      "event_time": 4985000000000,
+      "fresh_value": 1004985,
+      "freshness": "fresh",
+      "value": 1004985
+    },
+    {
+      "as_of": 5982500000000,
+      "available_at": 5982250000000,
+      "event_time": 5982000000000,
+      "fresh_value": 1005982,
+      "freshness": "fresh",
+      "value": 1005982
+    },
+    {
+      "as_of": 6979500000000,
+      "available_at": 6979250000000,
+      "event_time": 6979000000000,
+      "fresh_value": 1006979,
+      "freshness": "fresh",
+      "value": 1006979
+    },
+    {
+      "as_of": 7976500000000,
+      "available_at": 7976250000000,
+      "event_time": 7976000000000,
+      "fresh_value": 1007976,
+      "freshness": "fresh",
+      "value": 1007976
+    },
+    {
+      "as_of": 8973500000000,
+      "available_at": 8973250000000,
+      "event_time": 8973000000000,
+      "fresh_value": 1008973,
+      "freshness": "fresh",
+      "value": 1008973
+    },
+    {
+      "as_of": 9970500000000,
+      "available_at": 9970250000000,
+      "event_time": 9970000000000,
+      "fresh_value": 1009970,
+      "freshness": "fresh",
+      "value": 1009970
+    },
+    {
+      "as_of": 9999000000000,
+      "available_at": 9998250000000,
+      "event_time": 9998000000000,
+      "fresh_value": 1009998,
+      "freshness": "fresh",
+      "value": 1009998
+    },
+    {
+      "as_of": 10000000000000,
+      "available_at": 9999250000000,
+      "event_time": 9999000000000,
+      "fresh_value": 1009999,
+      "freshness": "fresh",
+      "value": 1009999
+    },
+    {
+      "as_of": 10001000000000,
+      "available_at": 9999250000000,
+      "event_time": 9999000000000,
+      "fresh_value": 1009999,
+      "freshness": "fresh",
+      "value": 1009999
+    },
+    {
+      "as_of": 10003000000000,
+      "available_at": 10002250000000,
+      "event_time": 10002000000000,
+      "fresh_value": 1010002,
+      "freshness": "fresh",
+      "value": 1010002
+    },
+    {
+      "as_of": 10004000000000,
+      "available_at": 10003250000000,
+      "event_time": 10003000000000,
+      "fresh_value": 1010003,
+      "freshness": "fresh",
+      "value": 1010003
+    },
+    {
+      "as_of": 10967500000000,
+      "available_at": 10967250000000,
+      "event_time": 10967000000000,
+      "fresh_value": 1010967,
+      "freshness": "fresh",
+      "value": 1010967
+    },
+    {
+      "as_of": 11964500000000,
+      "available_at": 11964250000000,
+      "event_time": 11964000000000,
+      "fresh_value": 1011964,
+      "freshness": "fresh",
+      "value": 1011964
+    },
+    {
+      "as_of": 12961500000000,
+      "available_at": 12961250000000,
+      "event_time": 12961000000000,
+      "fresh_value": 1012961,
+      "freshness": "fresh",
+      "value": 1012961
+    },
+    {
+      "as_of": 13958500000000,
+      "available_at": 13958250000000,
+      "event_time": 13958000000000,
+      "fresh_value": 1013958,
+      "freshness": "fresh",
+      "value": 1013958
+    },
+    {
+      "as_of": 14955500000000,
+      "available_at": 14955250000000,
+      "event_time": 14955000000000,
+      "fresh_value": 1014955,
+      "freshness": "fresh",
+      "value": 1014955
+    },
+    {
+      "as_of": 15952500000000,
+      "available_at": 15952250000000,
+      "event_time": 15952000000000,
+      "fresh_value": 1015952,
+      "freshness": "fresh",
+      "value": 1015952
+    },
+    {
+      "as_of": 16949500000000,
+      "available_at": 16949250000000,
+      "event_time": 16949000000000,
+      "fresh_value": 1016949,
+      "freshness": "fresh",
+      "value": 1016949
+    },
+    {
+      "as_of": 17946500000000,
+      "available_at": 17946250000000,
+      "event_time": 17946000000000,
+      "fresh_value": 1017946,
+      "freshness": "fresh",
+      "value": 1017946
+    },
+    {
+      "as_of": 18943500000000,
+      "available_at": 18943250000000,
+      "event_time": 18943000000000,
+      "fresh_value": 1018943,
+      "freshness": "fresh",
+      "value": 1018943
+    },
+    {
+      "as_of": 19940500000000,
+      "available_at": 19940250000000,
+      "event_time": 19940000000000,
+      "fresh_value": 1019940,
+      "freshness": "fresh",
+      "value": 1019940
+    },
+    {
+      "as_of": 20050000000000,
+      "available_at": 19999250000000,
+      "event_time": 19999000000000,
+      "fresh_value": null,
+      "freshness": "stale",
+      "value": 1019999
+    },
+    {
+      "as_of": 20150000000000,
+      "available_at": 20100000000000,
+      "event_time": null,
+      "fresh_value": null,
+      "freshness": "age_unknown",
+      "value": 2000000
+    }
+  ],
+  "entity_id": "kraken:BTC-USD",
+  "feature": "last_bid_price",
+  "leak_row": {
+    "available_at": 10003000000000,
+    "event_time": 9998000000000,
+    "note": "stamped before the read, arrived after it",
+    "value": 999999
+  },
+  "rows": 20001,
+  "tickvault_as_of_all_points_s": 0.000226041,
+  "ttl_nanos": 10000000000
+}
