@@ -437,7 +437,10 @@ fn the_schema_declares_what_a_reader_needs_to_check() {
         schema.metadata().get("tickvault.price_scale"),
         Some(&tickvault::fixed::SCALE.to_string())
     );
-    assert!(schema.metadata().contains_key("tickvault.version"));
+    assert_eq!(
+        schema.metadata().get("tickvault.version"),
+        Some(&env!("CARGO_PKG_VERSION").to_string())
+    );
     // And a file written by the current writer passes its own check.
     let dir = tempfile::tempdir().expect("tempdir");
     let root = dir.path();
