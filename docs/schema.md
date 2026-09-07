@@ -25,6 +25,18 @@ archive/
 still identifies itself when read on its own. Files beginning with `_` are
 ignored by partition discovery.
 
+## Compatibility mechanism
+
+TickVault uses Arrow's typed schema embedded in every Parquet file instead of a
+parallel JSON Schema or Avro document. Parquet is the published interface, so
+validating its actual physical and logical types avoids a second schema that
+could drift from the bytes consumers read. The schema metadata carries the
+writer version and fixed-point scale. `tests/gate_schema_compat.rs` retains old
+record shapes, proves additive columns read in both directions, and rejects
+removed, retyped, or rescaled data. `examples/versioned_read.rs` is the
+versioned external consumer and refuses mixed incompatible scales before it
+decodes rows.
+
 ## Columns
 
 One row per **level change**. `msg_index` groups the levels that arrived in one
