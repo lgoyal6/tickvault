@@ -30,6 +30,15 @@ built on the published Python bindings, so it exercises what a user installs.
 | `tvstudy.py` | Chronological folds, two baselines, out-of-sample R-squared, block-bootstrap intervals, and what it would cost to act |
 | `tvcontrols.py` | A planted-signal positive control and a look-ahead control that rewrites the future |
 
+## Statistical implementation
+
+The build plan named statsmodels. This harness deliberately substitutes NumPy
+ordinary least squares plus local Newey-West/HAC and moving-block bootstrap
+implementations. The controls test those local formulas, but the results do not
+inherit validation from statsmodels. Existing Flightrisk evidence informed the
+required chronological and uncertainty checks; no Flightrisk code or result is
+imported here.
+
 ## Running it
 
 The bindings must be installed (`maturin build --release` in `bindings/`, then
