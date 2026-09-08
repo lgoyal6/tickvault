@@ -13,6 +13,10 @@ Nothing here places an order, connects to a venue, or claims a profit. The word
 price anyone can trade at. The cost block exists so that any measured number can
 be put next to what it would take to act on it.
 
+The compact [verified result](RESULT.md) exposes the headline table, controls,
+limits, and source-artifact hashes without requiring the private research slice.
+Verify it from a clean clone with `python3 research/public_result.py verify`.
+
 ## Why it lives in this repository
 
 The recorder does not import it and does not know it exists, exactly like

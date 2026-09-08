@@ -1,0 +1,322 @@
+{
+  "controls": {
+    "futureCorruption": {
+      "earlierFoldsChecked": 14,
+      "earlierFoldsIdentical": 14,
+      "rowsCorrupted": 71990,
+      "rowsTotal": 208771,
+      "verdict": "pass"
+    },
+    "futureRewrite": [
+      {
+        "futureRowsChanged": true,
+        "pastRowsIdentical": true,
+        "postCutBooksDiffering": 3585,
+        "postCutRows": 3599,
+        "venue": "kraken",
+        "verdict": "pass"
+      },
+      {
+        "futureRowsChanged": true,
+        "pastRowsIdentical": true,
+        "postCutBooksDiffering": 3545,
+        "postCutRows": 3599,
+        "venue": "coinbase",
+        "verdict": "pass"
+      },
+      {
+        "futureRowsChanged": true,
+        "pastRowsIdentical": true,
+        "postCutBooksDiffering": 3549,
+        "postCutRows": 3599,
+        "venue": "okx",
+        "verdict": "pass"
+      }
+    ],
+    "plantedSignal": [
+      {
+        "medianRecoveredR2": -0.00035227,
+        "plantedR2": 0.0
+      },
+      {
+        "medianRecoveredR2": 0.00460273,
+        "plantedR2": 0.005
+      },
+      {
+        "medianRecoveredR2": 0.01968589,
+        "plantedR2": 0.02
+      },
+      {
+        "medianRecoveredR2": 0.10003482,
+        "plantedR2": 0.1
+      }
+    ]
+  },
+  "headline": {
+    "binanceBreakEvenFeeRangeBpsPerSide": [
+      -0.22247625,
+      -0.07314092
+    ],
+    "economicConclusion": "Economic null. Gross mid-to-mid edge did not cover the measured round-trip spread under the stated execution assumptions. No profitable strategy is claimed.",
+    "grossEdgeRangeBps": [
+      0.04383669,
+      0.58193778
+    ],
+    "oneAndFiveSecondFolds": 48,
+    "oneAndFiveSecondOosR2Range": [
+      0.02083786,
+      0.09108098
+    ],
+    "positiveBreakEvenFeeRangeBpsPerSide": [
+      0.03615867,
+      0.28455898
+    ],
+    "positiveOneAndFiveSecondFolds": 46,
+    "statisticalConclusion": "Book imbalance predicted one-to-five-second returns out of sample on all five verifiable venues and in 46 of 48 chronological folds.",
+    "verifiableVenues": 5
+  },
+  "momentumControl": {
+    "allThirtySecondCellsAtOrBelowZero": true,
+    "atOrBelowZero": 7,
+    "cells": 15,
+    "oosR2Range": [
+      -0.04621891,
+      0.03661005
+    ]
+  },
+  "provenance": {
+    "controlsOutputSha256": "fb16bf072eeaff516e76662a8fe2a82769994240c716e6a37257699f2dfbea8e",
+    "extractCommand": "python3 research/public_result.py extract --study results_h.json --controls controls.json --manifest manifest.json --panel panel_1s.parquet",
+    "manifestSha256": "3ff69cd3980eb78d93faede01ab053cb09b20b204874ff88d91335cc41a51aef",
+    "panelSha256": "b65fa3c3e0283d77e59f6493a8143dee5691c1eec8c8234179e9eec6d9e9e916",
+    "sourceBytes": 885793906,
+    "sourceFiles": 6204,
+    "sourceRows": 53825256,
+    "studyOutputSha256": "c47f30578b7937e58324e933d016ffc0ad6471da46df97c27d136fd2c5d97289",
+    "tickvaultRevision": "f1d867cc96e2e2521086072bf75d6be358ce681b",
+    "windowsUtc": [
+      {
+        "from": "2026-08-30T09:00:00.000000Z",
+        "to": "2026-08-30T11:00:00.000000Z"
+      },
+      {
+        "from": "2026-08-31T09:00:00.000000Z",
+        "to": "2026-08-31T11:00:00.000000Z"
+      },
+      {
+        "from": "2026-09-01T09:00:00.000000Z",
+        "to": "2026-09-01T11:00:00.000000Z"
+      },
+      {
+        "from": "2026-09-02T09:00:00.000000Z",
+        "to": "2026-09-02T11:00:00.000000Z"
+      },
+      {
+        "from": "2026-09-03T09:00:00.000000Z",
+        "to": "2026-09-03T11:00:00.000000Z"
+      },
+      {
+        "from": "2026-09-04T09:00:00.000000Z",
+        "to": "2026-09-04T11:00:00.000000Z"
+      }
+    ]
+  },
+  "question": "Does availability-time order book imbalance predict the next 1, 5, or 30 seconds of mid price out of sample, better than a random walk, and is the edge economic after measured spread?",
+  "results": [
+    {
+      "breakEvenFeeBpsPerSide": -0.22247625,
+      "grossMidToMidEdgeBps": 0.04383669,
+      "horizonSeconds": 1,
+      "medianSpreadBps": 0.4887892,
+      "oosR2VsRandomWalk": 0.02083786,
+      "positiveFolds": 3,
+      "samples": 17494,
+      "symbol": "BTC-USDT",
+      "totalFolds": 4,
+      "venue": "binance-us"
+    },
+    {
+      "breakEvenFeeBpsPerSide": -0.1667812,
+      "grossMidToMidEdgeBps": 0.15522679,
+      "horizonSeconds": 5,
+      "medianSpreadBps": 0.4887892,
+      "oosR2VsRandomWalk": 0.03139677,
+      "positiveFolds": 3,
+      "samples": 17047,
+      "symbol": "BTC-USDT",
+      "totalFolds": 4,
+      "venue": "binance-us"
+    },
+    {
+      "breakEvenFeeBpsPerSide": -0.07314092,
+      "grossMidToMidEdgeBps": 0.34250735,
+      "horizonSeconds": 30,
+      "medianSpreadBps": 0.4887892,
+      "oosR2VsRandomWalk": 0.00418184,
+      "positiveFolds": 2,
+      "samples": 14751,
+      "symbol": "BTC-USDT",
+      "totalFolds": 4,
+      "venue": "binance-us"
+    },
+    {
+      "breakEvenFeeBpsPerSide": 0.03615867,
+      "grossMidToMidEdgeBps": 0.08513415,
+      "horizonSeconds": 1,
+      "medianSpreadBps": 0.01281681,
+      "oosR2VsRandomWalk": 0.03914693,
+      "positiveFolds": 5,
+      "samples": 35690,
+      "symbol": "BTC-USDT",
+      "totalFolds": 5,
+      "venue": "bybit"
+    },
+    {
+      "breakEvenFeeBpsPerSide": 0.10330477,
+      "grossMidToMidEdgeBps": 0.21942634,
+      "horizonSeconds": 5,
+      "medianSpreadBps": 0.01281681,
+      "oosR2VsRandomWalk": 0.04534671,
+      "positiveFolds": 5,
+      "samples": 35670,
+      "symbol": "BTC-USDT",
+      "totalFolds": 5,
+      "venue": "bybit"
+    },
+    {
+      "breakEvenFeeBpsPerSide": 0.15146982,
+      "grossMidToMidEdgeBps": 0.31575644,
+      "horizonSeconds": 30,
+      "medianSpreadBps": 0.01281681,
+      "oosR2VsRandomWalk": 0.01078583,
+      "positiveFolds": 4,
+      "samples": 35545,
+      "symbol": "BTC-USDT",
+      "totalFolds": 5,
+      "venue": "bybit"
+    },
+    {
+      "breakEvenFeeBpsPerSide": 0.04373353,
+      "grossMidToMidEdgeBps": 0.08874931,
+      "horizonSeconds": 1,
+      "medianSpreadBps": 0.00128225,
+      "oosR2VsRandomWalk": 0.03180251,
+      "positiveFolds": 5,
+      "samples": 35563,
+      "symbol": "BTC-USD",
+      "totalFolds": 5,
+      "venue": "coinbase"
+    },
+    {
+      "breakEvenFeeBpsPerSide": 0.10652601,
+      "grossMidToMidEdgeBps": 0.21433426,
+      "horizonSeconds": 5,
+      "medianSpreadBps": 0.00128225,
+      "oosR2VsRandomWalk": 0.0333362,
+      "positiveFolds": 5,
+      "samples": 35535,
+      "symbol": "BTC-USD",
+      "totalFolds": 5,
+      "venue": "coinbase"
+    },
+    {
+      "breakEvenFeeBpsPerSide": 0.14501164,
+      "grossMidToMidEdgeBps": 0.29130553,
+      "horizonSeconds": 30,
+      "medianSpreadBps": 0.00128225,
+      "oosR2VsRandomWalk": 0.01026391,
+      "positiveFolds": 4,
+      "samples": 35360,
+      "symbol": "BTC-USD",
+      "totalFolds": 5,
+      "venue": "coinbase"
+    },
+    {
+      "breakEvenFeeBpsPerSide": 0.04040158,
+      "grossMidToMidEdgeBps": 0.09362298,
+      "horizonSeconds": 1,
+      "medianSpreadBps": 0.01281981,
+      "oosR2VsRandomWalk": 0.05130045,
+      "positiveFolds": 5,
+      "samples": 30668,
+      "symbol": "BTC-USD",
+      "totalFolds": 5,
+      "venue": "kraken"
+    },
+    {
+      "breakEvenFeeBpsPerSide": 0.1508859,
+      "grossMidToMidEdgeBps": 0.31459161,
+      "horizonSeconds": 5,
+      "medianSpreadBps": 0.01281981,
+      "oosR2VsRandomWalk": 0.09108098,
+      "positiveFolds": 5,
+      "samples": 30376,
+      "symbol": "BTC-USD",
+      "totalFolds": 5,
+      "venue": "kraken"
+    },
+    {
+      "breakEvenFeeBpsPerSide": 0.28455898,
+      "grossMidToMidEdgeBps": 0.58193778,
+      "horizonSeconds": 30,
+      "medianSpreadBps": 0.01281981,
+      "oosR2VsRandomWalk": 0.0410375,
+      "positiveFolds": 5,
+      "samples": 28634,
+      "symbol": "BTC-USD",
+      "totalFolds": 5,
+      "venue": "kraken"
+    },
+    {
+      "breakEvenFeeBpsPerSide": 0.0459945,
+      "grossMidToMidEdgeBps": 0.10480558,
+      "horizonSeconds": 1,
+      "medianSpreadBps": 0.01281658,
+      "oosR2VsRandomWalk": 0.04564797,
+      "positiveFolds": 5,
+      "samples": 35626,
+      "symbol": "BTC-USDT",
+      "totalFolds": 5,
+      "venue": "okx"
+    },
+    {
+      "breakEvenFeeBpsPerSide": 0.11231745,
+      "grossMidToMidEdgeBps": 0.23745147,
+      "horizonSeconds": 5,
+      "medianSpreadBps": 0.01281658,
+      "oosR2VsRandomWalk": 0.04523121,
+      "positiveFolds": 5,
+      "samples": 35602,
+      "symbol": "BTC-USDT",
+      "totalFolds": 5,
+      "venue": "okx"
+    },
+    {
+      "breakEvenFeeBpsPerSide": 0.13398723,
+      "grossMidToMidEdgeBps": 0.28079104,
+      "horizonSeconds": 30,
+      "medianSpreadBps": 0.01281658,
+      "oosR2VsRandomWalk": 0.01091458,
+      "positiveFolds": 5,
+      "samples": 35452,
+      "symbol": "BTC-USDT",
+      "totalFolds": 5,
+      "venue": "okx"
+    }
+  ],
+  "schemaVersion": 1,
+  "scope": {
+    "exclusionReason": "the recorder could not vouch for these rows",
+    "execution": "No orders were placed. Edge is measured mid-to-mid. Fees, impact, queue position, partial fills, rejects, funding, and borrow were not observed.",
+    "instrument": "BTC",
+    "sampling": "one row per second from 09:00 to 11:00 UTC across six days",
+    "venueExcluded": "bitstamp",
+    "venuesIncluded": [
+      "binance-us",
+      "bybit",
+      "coinbase",
+      "kraken",
+      "okx"
+    ]
+  }
+}
