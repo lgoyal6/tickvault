@@ -24,6 +24,11 @@ rather than finding out when your backtest looks suspiciously good.
 The recorder is not the point. The dataset is the point, and **the gap report is
 its front page.**
 
+**[Read the verified microstructure result](research/RESULT.md).** Across five
+verifiable venues, imbalance predicted one-to-five-second returns in 46 of 48
+chronological folds, but the measured edge did not cover the round-trip spread.
+The result is an economic null, and no profitable strategy is claimed.
+
 > **Thesis.** For market data the interesting property is not throughput, it is
 > whether the file is telling you the truth. A recorder that silently stitches
 > deltas across a dropped message produces a book that looks continuous and is
