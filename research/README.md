@@ -76,6 +76,18 @@ minute after the first file has a book built from a minute of deltas with no
 snapshot behind it. Requiring an hour of archive before the first sample is what
 stops that from being invisible.
 
+## The simulator next door
+
+[`sim/`](../sim) asks a different question of the same archive: not whether a
+feature predicts anything, but whether the honesty machinery holds when
+something tries to trade against the data. It replays each venue under its own
+loss detector, stops a window at the first violation rather than stitching past
+it, and simulates execution with an approximate queue position that it names
+`approx_` wherever it appears. Its experiment is frozen in
+[`sim/manifest.json`](../sim/manifest.json) before any result existed, and
+`./scripts/run-strategy-eval.sh` reproduces it. Like this harness it places no
+order anywhere and claims no profit.
+
 ## The rules the harness enforces
 
 **One clock.** Every row is stamped with an availability time (`recv_wall`) and
