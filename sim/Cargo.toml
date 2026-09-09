@@ -1,0 +1,28 @@
+[package]
+name = "tickvault-sim"
+version = "0.1.1"
+edition = "2024"
+# Never published. This is a consumer of an archive, like `research/` and
+# `streaming/`: the recorder does not import it and does not know it exists.
+publish = false
+description = "Walk-forward strategy evaluator that replays a tickvault archive with simulated execution"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# The read half of the recorder, and nothing else. `default-features = false`
+# drops the capture half, so this crate carries no tokio, no TLS stack and no
+# websocket client: it only ever reads files that are already on disk.
+tickvault = { path = "..", default-features = false }
+arrow = { version = "59.2.0", default-features = false }
+clap = { version = "4.6.6", features = ["derive"] }
+parquet = { version = "59.2.0", default-features = false, features = ["arrow", "snap"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+# The manifest declares a sha256 per input. The gate script checks them with
+# shasum, and the evaluator checks them again itself, so a result can never be
+# produced from bytes the manifest does not name.
+sha2 = "0.11.0"
+
+[[bin]]
+name = "tickvault-sim"
+path = "src/main.rs"
