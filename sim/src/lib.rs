@@ -17,7 +17,11 @@
 //! - [`manifest`] the frozen experiment. Written and committed before any
 //!   result existed, hashes included, because a threshold that can move after
 //!   the fact is not a threshold
+//! - [`feed`] loading a venue's archive, enforcing its sequence scheme, and
+//!   cutting it into chronological windows. A detected violation stops the
+//!   window; nothing is ever stitched across a hole
 
+pub mod feed;
 pub mod manifest;
 
 /// What went wrong. One flat error: this is a batch job that either produces a
