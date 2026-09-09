@@ -1,0 +1,608 @@
+{
+  "manifest_version": 1,
+  "frozen_on": "2026-09-09",
+  "experiment": "tickvault-sim walk-forward strategy evaluation over recorded L2 archives",
+  "data_boundary": "Local replay of recorded archive data on a single host. Execution is simulated: no order reached a venue, no venue was connected, and no money moved. Queue position is approximate everywhere it appears and every such field is named with an approx_ prefix. Fills come from observed level changes and observed crossings of the recorded book, not from a matching engine. No profitability, alpha, or live trading is claimed.",
+  "measured_input_corrections": [
+    {
+      "claim": "the recordings carry trade rows",
+      "measured": "traded_qty is null on 100 percent of rows in all six archives (0 of 300090 rows non-null)",
+      "consequence": "every archive here is an aggregated L2 feed, so a level shrinking cannot be split between a trade and a cancellation. The trade-driven fill path is implemented and inert on this input; every maker fill on this input comes from an observed crossing of the order's price. Writing a zero traded quantity would be a claim, and a false one."
+    },
+    {
+      "claim": "a per-message counter advancing by more than one is a gap",
+      "measured": "coinbase message index 6 advances sequence_num from 5 to 7, 13 microseconds after the previous message, and the recorder's own live check marked every coinbase row clean (suspect = 0 across 135935 rows)",
+      "consequence": "the Coinbase Advanced Trade sequence_num counts every message on the connection, including messages that carry no book levels, so a forward skip in the archived per-message identifier cannot be attributed from the archive alone. A forward skip is counted as counter_forward_skip and does not stop the book; the recorder's suspect column does stop it. Calling an unattributable skip a venue gap would blame the venue for a limit of our own row projection."
+    },
+    {
+      "claim": "kraken checksums cannot be rechecked from the archive because instrument precision is not archived",
+      "measured": "price precision 1 and quantity precision 8 reproduce all 11386 archived kraken checksums exactly; every other precision pair tried matched 0 of 11386",
+      "consequence": "the precision pair is frozen as a declared manifest input, and the replay recomputes and compares every kraken checksum. A divergence stops the window."
+    }
+  ],
+  "inputs": [
+    {
+      "venue": "binance-us",
+      "symbol": "BTC-USDT",
+      "date": "2026-08-25",
+      "archive_root": "docs/data/binance-us",
+      "parquet": "docs/data/binance-us/venue=binance-us/symbol=BTC-USDT/date=2026-08-25/part-1787637355193065875-0000.parquet",
+      "parquet_sha256": "26ded6cac09ebff1c8da6e0e60deab6a8e3ebf2cdbdf41b0fd36f075ce1b9686",
+      "manifest_jsonl": "docs/data/binance-us/_manifest.jsonl",
+      "manifest_jsonl_sha256": "46e339e25aadc704fdf801f121c757305bb91d4ac371ae102fa35aba42476574",
+      "rows": 7187,
+      "book_level": 2,
+      "feed_depth": null,
+      "first_recv_wall_ns": 1787637355193065875,
+      "last_recv_wall_ns": 1787637606455511792,
+      "span_seconds": 251.262,
+      "sequence_scheme": "range",
+      "verifiable": true
+    },
+    {
+      "venue": "bitstamp",
+      "symbol": "BTC-USD",
+      "date": "2026-08-25",
+      "archive_root": "docs/data/bitstamp",
+      "parquet": "docs/data/bitstamp/venue=bitstamp/symbol=BTC-USD/date=2026-08-25/part-1787637358288785208-0000.parquet",
+      "parquet_sha256": "f462ab35c8a8e18d31876d6d07a2bf29f55559bf9d9734477e6374e0062695b5",
+      "manifest_jsonl": "docs/data/bitstamp/_manifest.jsonl",
+      "manifest_jsonl_sha256": "edfe1976d62f87d9f3b07b0da83bcc394b91bece741831348b2acb201c4c8b2c",
+      "rows": 26131,
+      "book_level": 2,
+      "feed_depth": null,
+      "first_recv_wall_ns": 1787637358288785208,
+      "last_recv_wall_ns": 1787637658099776666,
+      "span_seconds": 299.811,
+      "sequence_scheme": "timestamp",
+      "verifiable": false
+    },
+    {
+      "venue": "bybit",
+      "symbol": "BTC-USDT",
+      "date": "2026-08-25",
+      "archive_root": "docs/data/bybit",
+      "parquet": "docs/data/bybit/venue=bybit/symbol=BTC-USDT/date=2026-08-25/part-1787637354762284125-0000.parquet",
+      "parquet_sha256": "9bb9b713e5736618b7ea512b8ceb018eebad390bc0097cba2b0cca349f347b2c",
+      "manifest_jsonl": "docs/data/bybit/_manifest.jsonl",
+      "manifest_jsonl_sha256": "228e28bca946020102728491dfb2f9cce2d2740898849f4d0791d3dd3c5a1d7e",
+      "rows": 38092,
+      "book_level": 2,
+      "feed_depth": 50,
+      "first_recv_wall_ns": 1787637354762284125,
+      "last_recv_wall_ns": 1787637655540314584,
+      "span_seconds": 300.778,
+      "sequence_scheme": "counter",
+      "verifiable": true
+    },
+    {
+      "venue": "coinbase",
+      "symbol": "BTC-USD",
+      "date": "2026-08-25",
+      "archive_root": "docs/data/coinbase",
+      "parquet": "docs/data/coinbase/venue=coinbase/symbol=BTC-USD/date=2026-08-25/part-1787637356715735750-0000.parquet",
+      "parquet_sha256": "dcbacdb92d1ed7dbb72d3f0fe82e32c5a8b5b0006f4b9fc9951c5caebd7c3011",
+      "manifest_jsonl": "docs/data/coinbase/_manifest.jsonl",
+      "manifest_jsonl_sha256": "93bd8a3cdbb86c375b4161470c32b978ef0e40e7949285de8a0442a251a59bb8",
+      "rows": 135935,
+      "book_level": 2,
+      "feed_depth": null,
+      "first_recv_wall_ns": 1787637356715735750,
+      "last_recv_wall_ns": 1787637656526668333,
+      "span_seconds": 299.811,
+      "sequence_scheme": "counter",
+      "verifiable": true
+    },
+    {
+      "venue": "kraken",
+      "symbol": "BTC-USD",
+      "date": "2026-08-25",
+      "archive_root": "docs/data/kraken",
+      "parquet": "docs/data/kraken/venue=kraken/symbol=BTC-USD/date=2026-08-25/part-1787637356351189292-0000.parquet",
+      "parquet_sha256": "081e7c928115cdb398e2aed3f4e9b77f58df9d68517df4ec5166f376c78016e7",
+      "manifest_jsonl": "docs/data/kraken/_manifest.jsonl",
+      "manifest_jsonl_sha256": "bf9513da6b33c96290d786fe02a4487c4bbb3303f33bbd3fbf3b611890f7c379",
+      "rows": 16643,
+      "book_level": 2,
+      "feed_depth": 10,
+      "first_recv_wall_ns": 1787637356351189292,
+      "last_recv_wall_ns": 1787637656954913417,
+      "span_seconds": 300.604,
+      "sequence_scheme": "checksum",
+      "verifiable": true
+    },
+    {
+      "venue": "okx",
+      "symbol": "BTC-USDT",
+      "date": "2026-08-25",
+      "archive_root": "docs/data/okx",
+      "parquet": "docs/data/okx/venue=okx/symbol=BTC-USDT/date=2026-08-25/part-1787637354945811709-0000.parquet",
+      "parquet_sha256": "8c54a5c3df213e17a5708d8655440c82cac58337e344cdfde1f5cc3ad6526729",
+      "manifest_jsonl": "docs/data/okx/_manifest.jsonl",
+      "manifest_jsonl_sha256": "75b72d40eed4c9dc658ea94d8fddfe981263eca0d29c44d1bab10a77cb1e8430",
+      "rows": 76102,
+      "book_level": 2,
+      "feed_depth": 400,
+      "first_recv_wall_ns": 1787637354945811709,
+      "last_recv_wall_ns": 1787637655334899500,
+      "span_seconds": 300.389,
+      "sequence_scheme": "chain",
+      "verifiable": true
+    }
+  ],
+  "input_index": {
+    "path": "docs/data/index.json",
+    "sha256": "2838dfb1067e44a2020cff150fa662fd139f7505a0276bf94da29602bde9e201"
+  },
+  "kraken_checksum_precision": {
+    "price": 1,
+    "qty": 8
+  },
+  "windows": {
+    "rule": "per venue, skip a 30 second warmup from the partition's first recv_wall so the book is built from the archive's own opening snapshot, then take five contiguous 40 second windows in receive order. Window 0 is train-only; windows 1 to 4 are held out.",
+    "warmup_nanos": 30000000000,
+    "window_nanos": 40000000000,
+    "windows_per_venue": 5,
+    "held_out_indices": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "single_date_limitation": "every archive is 2026-08-25 and each is under six minutes long, so the walk-forward unit is a window inside one recording rather than a trading day. Nothing here is evidence about another day, another instrument, or another market regime.",
+    "per_venue": [
+      {
+        "venue": "binance-us",
+        "symbol": "BTC-USDT",
+        "windows": [
+          {
+            "index": 0,
+            "from_recv_wall_ns": 1787637385193065875,
+            "to_recv_wall_ns": 1787637425193065875,
+            "role": "train-only"
+          },
+          {
+            "index": 1,
+            "from_recv_wall_ns": 1787637425193065875,
+            "to_recv_wall_ns": 1787637465193065875,
+            "role": "held-out"
+          },
+          {
+            "index": 2,
+            "from_recv_wall_ns": 1787637465193065875,
+            "to_recv_wall_ns": 1787637505193065875,
+            "role": "held-out"
+          },
+          {
+            "index": 3,
+            "from_recv_wall_ns": 1787637505193065875,
+            "to_recv_wall_ns": 1787637545193065875,
+            "role": "held-out"
+          },
+          {
+            "index": 4,
+            "from_recv_wall_ns": 1787637545193065875,
+            "to_recv_wall_ns": 1787637585193065875,
+            "role": "held-out"
+          }
+        ]
+      },
+      {
+        "venue": "bitstamp",
+        "symbol": "BTC-USD",
+        "windows": [
+          {
+            "index": 0,
+            "from_recv_wall_ns": 1787637388288785208,
+            "to_recv_wall_ns": 1787637428288785208,
+            "role": "train-only"
+          },
+          {
+            "index": 1,
+            "from_recv_wall_ns": 1787637428288785208,
+            "to_recv_wall_ns": 1787637468288785208,
+            "role": "held-out"
+          },
+          {
+            "index": 2,
+            "from_recv_wall_ns": 1787637468288785208,
+            "to_recv_wall_ns": 1787637508288785208,
+            "role": "held-out"
+          },
+          {
+            "index": 3,
+            "from_recv_wall_ns": 1787637508288785208,
+            "to_recv_wall_ns": 1787637548288785208,
+            "role": "held-out"
+          },
+          {
+            "index": 4,
+            "from_recv_wall_ns": 1787637548288785208,
+            "to_recv_wall_ns": 1787637588288785208,
+            "role": "held-out"
+          }
+        ]
+      },
+      {
+        "venue": "bybit",
+        "symbol": "BTC-USDT",
+        "windows": [
+          {
+            "index": 0,
+            "from_recv_wall_ns": 1787637384762284125,
+            "to_recv_wall_ns": 1787637424762284125,
+            "role": "train-only"
+          },
+          {
+            "index": 1,
+            "from_recv_wall_ns": 1787637424762284125,
+            "to_recv_wall_ns": 1787637464762284125,
+            "role": "held-out"
+          },
+          {
+            "index": 2,
+            "from_recv_wall_ns": 1787637464762284125,
+            "to_recv_wall_ns": 1787637504762284125,
+            "role": "held-out"
+          },
+          {
+            "index": 3,
+            "from_recv_wall_ns": 1787637504762284125,
+            "to_recv_wall_ns": 1787637544762284125,
+            "role": "held-out"
+          },
+          {
+            "index": 4,
+            "from_recv_wall_ns": 1787637544762284125,
+            "to_recv_wall_ns": 1787637584762284125,
+            "role": "held-out"
+          }
+        ]
+      },
+      {
+        "venue": "coinbase",
+        "symbol": "BTC-USD",
+        "windows": [
+          {
+            "index": 0,
+            "from_recv_wall_ns": 1787637386715735750,
+            "to_recv_wall_ns": 1787637426715735750,
+            "role": "train-only"
+          },
+          {
+            "index": 1,
+            "from_recv_wall_ns": 1787637426715735750,
+            "to_recv_wall_ns": 1787637466715735750,
+            "role": "held-out"
+          },
+          {
+            "index": 2,
+            "from_recv_wall_ns": 1787637466715735750,
+            "to_recv_wall_ns": 1787637506715735750,
+            "role": "held-out"
+          },
+          {
+            "index": 3,
+            "from_recv_wall_ns": 1787637506715735750,
+            "to_recv_wall_ns": 1787637546715735750,
+            "role": "held-out"
+          },
+          {
+            "index": 4,
+            "from_recv_wall_ns": 1787637546715735750,
+            "to_recv_wall_ns": 1787637586715735750,
+            "role": "held-out"
+          }
+        ]
+      },
+      {
+        "venue": "kraken",
+        "symbol": "BTC-USD",
+        "windows": [
+          {
+            "index": 0,
+            "from_recv_wall_ns": 1787637386351189292,
+            "to_recv_wall_ns": 1787637426351189292,
+            "role": "train-only"
+          },
+          {
+            "index": 1,
+            "from_recv_wall_ns": 1787637426351189292,
+            "to_recv_wall_ns": 1787637466351189292,
+            "role": "held-out"
+          },
+          {
+            "index": 2,
+            "from_recv_wall_ns": 1787637466351189292,
+            "to_recv_wall_ns": 1787637506351189292,
+            "role": "held-out"
+          },
+          {
+            "index": 3,
+            "from_recv_wall_ns": 1787637506351189292,
+            "to_recv_wall_ns": 1787637546351189292,
+            "role": "held-out"
+          },
+          {
+            "index": 4,
+            "from_recv_wall_ns": 1787637546351189292,
+            "to_recv_wall_ns": 1787637586351189292,
+            "role": "held-out"
+          }
+        ]
+      },
+      {
+        "venue": "okx",
+        "symbol": "BTC-USDT",
+        "windows": [
+          {
+            "index": 0,
+            "from_recv_wall_ns": 1787637384945811709,
+            "to_recv_wall_ns": 1787637424945811709,
+            "role": "train-only"
+          },
+          {
+            "index": 1,
+            "from_recv_wall_ns": 1787637424945811709,
+            "to_recv_wall_ns": 1787637464945811709,
+            "role": "held-out"
+          },
+          {
+            "index": 2,
+            "from_recv_wall_ns": 1787637464945811709,
+            "to_recv_wall_ns": 1787637504945811709,
+            "role": "held-out"
+          },
+          {
+            "index": 3,
+            "from_recv_wall_ns": 1787637504945811709,
+            "to_recv_wall_ns": 1787637544945811709,
+            "role": "held-out"
+          },
+          {
+            "index": 4,
+            "from_recv_wall_ns": 1787637544945811709,
+            "to_recv_wall_ns": 1787637584945811709,
+            "role": "held-out"
+          }
+        ]
+      }
+    ]
+  },
+  "costs": {
+    "taker_fee_bps": 5.0,
+    "maker_rebate_bps": 0.0,
+    "maker_rebate_note": "zero, meaning a maker fill pays nothing and receives nothing. Real spot maker fees are usually a positive cost, so this is generous to every quoting strategy and the maker results are an upper bound rather than an estimate.",
+    "extra_slippage_bps": 0.5,
+    "extra_slippage_note": "applied to marketable fills on top of walking the recorded book levels",
+    "own_orders_do_not_consume_recorded_liquidity": "a marketable order walks the recorded book but does not remove those levels from it, so a large order would be flattered. Order size is held at 0.005 base units to keep that approximation small, and extra_slippage_bps stands in for the impact that is not modelled."
+  },
+  "latency_model": {
+    "kind": "seeded shifted exponential, sampled per order and per market data message",
+    "order_entry_ms": {
+      "shift": 3.0,
+      "mean_excess": 4.0,
+      "clamp_ms": [
+        3.0,
+        60.0
+      ]
+    },
+    "market_data_ms": {
+      "shift": 1.0,
+      "mean_excess": 2.0,
+      "clamp_ms": [
+        1.0,
+        40.0
+      ]
+    },
+    "prng": "SplitMix64",
+    "base_seed": 20260825,
+    "per_run_seed": "SplitMix64 mix of base_seed with venue, window index, strategy name and parameter index",
+    "decision_rule": "a decision at time T may only read market data whose recv_wall plus its sampled market data latency is at or before T. An order submitted at T takes effect at T plus its sampled order entry latency.",
+    "reported": [
+      "median_ms",
+      "p99_ms"
+    ]
+  },
+  "risk_limits": {
+    "inventory_limit_base": 0.02,
+    "position_limit_base": 0.04,
+    "position_limit_definition": "absolute inventory plus resting size on the side that would extend it",
+    "gross_exposure_limit_quote": 3000.0,
+    "loss_limit_quote": -40.0,
+    "loss_limit_definition": "window after-fee mark-to-market PnL floor",
+    "kill_switch": "a breach of the inventory, gross exposure or loss limit cancels every resting order and blocks new orders for the remainder of the window. Activations are counted.",
+    "rejection_reasons": [
+      "kill_switch_active",
+      "position_limit",
+      "inventory_limit",
+      "gross_exposure_limit",
+      "no_two_sided_book",
+      "non_positive_size",
+      "would_cross_book"
+    ]
+  },
+  "order_size_base": 0.005,
+  "strategies": {
+    "no_trade": {
+      "role": "baseline",
+      "grid": {},
+      "grid_order": [],
+      "fixed": {}
+    },
+    "fixed_spread_mm": {
+      "role": "baseline",
+      "description": "symmetric limit quotes at mid times (1 -/+ half_spread_bps/10000), requoted on a fixed interval",
+      "grid_order": [
+        "half_spread_bps",
+        "requote_ms"
+      ],
+      "grid": {
+        "half_spread_bps": [
+          1.0,
+          2.5,
+          5.0
+        ],
+        "requote_ms": [
+          500,
+          2000
+        ]
+      },
+      "fixed": {
+        "quote_size_base": 0.005
+      }
+    },
+    "depth_imbalance": {
+      "role": "baseline",
+      "description": "top-k depth imbalance (bid qty minus ask qty over their sum); enter marketable in the imbalance direction past the threshold, exit after horizon_ms or on an opposite signal",
+      "grid_order": [
+        "depth_k",
+        "threshold",
+        "horizon_ms"
+      ],
+      "grid": {
+        "depth_k": [
+          1,
+          5
+        ],
+        "threshold": [
+          0.15,
+          0.35
+        ],
+        "horizon_ms": [
+          2000,
+          10000
+        ]
+      },
+      "fixed": {
+        "trade_size_base": 0.005
+      }
+    },
+    "imbalance_skew_mm": {
+      "role": "candidate",
+      "description": "quotes at mid times (1 -/+ half_spread_bps/10000), shifted by skew_bps times the top-5 imbalance and by minus inv_skew_bps times inventory over the inventory limit",
+      "grid_order": [
+        "half_spread_bps",
+        "skew_bps",
+        "inv_skew_bps"
+      ],
+      "grid": {
+        "half_spread_bps": [
+          1.0,
+          2.5,
+          5.0
+        ],
+        "skew_bps": [
+          0.0,
+          2.0,
+          5.0
+        ],
+        "inv_skew_bps": [
+          0.0,
+          3.0
+        ]
+      },
+      "fixed": {
+        "quote_size_base": 0.005,
+        "depth_k": 5,
+        "requote_ms": 1000
+      }
+    }
+  },
+  "fit_procedure": "for each venue and each held-out window k in 1..4, every grid point of a parameterised strategy is evaluated independently on each of that venue's windows 0..k-1 and its after-fee PnL summed. The grid point with the highest summed after-fee PnL wins; ties break to the lower summed turnover, then to the earliest position in the declared grid_order enumeration. That single grid point is then run on window k. No held-out window ever enters a fit, and no venue's parameters are fitted on another venue.",
+  "baselines": [
+    "no_trade",
+    "fixed_spread_mm",
+    "depth_imbalance"
+  ],
+  "candidate": "imbalance_skew_mm",
+  "primary_metric": "held-out after-fee mark-to-market PnL in quote units",
+  "secondary_metrics": [
+    "max_drawdown_quote",
+    "turnover_quote",
+    "fill_rate",
+    "mean_abs_inventory_base",
+    "max_abs_inventory_base",
+    "rejected_orders_by_reason",
+    "kill_switch_activations",
+    "latency_median_ms",
+    "latency_p99_ms"
+  ],
+  "gate_scope": {
+    "aggregate_over": "verifiable venues only: coinbase, kraken, okx, bybit, binance-us",
+    "bitstamp": "reported with verifiable false and excluded from every gate aggregate. Its feed publishes neither a sequence number nor a checksum, so loss on it is undetectable by construction and unverifiable is not clean."
+  },
+  "bootstrap": {
+    "kind": "moving-block bootstrap over held-out windows",
+    "unit": "one held-out (venue, window) after-fee PnL",
+    "unit_note": "the brief asks for a bootstrap by trading day. There is one recording date, so the unit is a window. A window-level interval says nothing about day-to-day variation.",
+    "block_length": 2,
+    "resamples": 2000,
+    "seed": 20260826,
+    "interval": "percentile, 2.5 and 97.5"
+  },
+  "promotion_gate": {
+    "clauses": [
+      {
+        "id": "no_invariant_violations",
+        "test": "zero replay invariant violations across the held-out windows in scope"
+      },
+      {
+        "id": "no_leakage",
+        "test": "zero leakage violations across every decision in every run"
+      },
+      {
+        "id": "risk_controls_pass",
+        "test": "every limit breach observed was followed by a kill-switch activation in the same window"
+      },
+      {
+        "id": "beats_no_trade",
+        "test": "candidate aggregate held-out after-fee PnL > no_trade aggregate"
+      },
+      {
+        "id": "beats_fixed_spread_mm",
+        "test": "candidate aggregate held-out after-fee PnL > fixed_spread_mm aggregate"
+      },
+      {
+        "id": "beats_depth_imbalance",
+        "test": "candidate aggregate held-out after-fee PnL > depth_imbalance aggregate"
+      },
+      {
+        "id": "bootstrap_lower_bound_above_zero",
+        "test": "lower 95 percent block-bootstrap bound of candidate after-fee PnL > 0"
+      },
+      {
+        "id": "direction_agreement",
+        "test": "at least 3 of the 4 chronological held-out window positions have a candidate aggregate after-fee PnL of the same sign as the overall candidate aggregate"
+      }
+    ],
+    "on_any_failure": "strategy_quality is Rejected, the report states that no profitability and no alpha are claimed, and every losing baseline is preserved in the results. The simulator, the sequence enforcement and the risk system remain the deliverable."
+  },
+  "negative_controls": [
+    {
+      "id": "leak-future",
+      "flag": "--control leak-future",
+      "injection": "the next message's mid is added to the feature vector at decision time",
+      "must_fail_with": "leakage_violations greater than zero and a non-zero exit status"
+    },
+    {
+      "id": "no-costs",
+      "flag": "--control no-costs",
+      "injection": "taker fee, maker rebate and extra slippage all set to zero",
+      "must_fail_with": "comparable false, a quantified after-cost difference against the frozen-cost run, and a non-zero exit status"
+    },
+    {
+      "id": "shuffle-seq",
+      "flag": "--control shuffle-seq",
+      "injection": "inside each window the sequence identifiers of the two messages at the window midpoint are swapped and the message at index 1 is observed twice",
+      "must_fail_with": "a recorded replay invariant violation for every venue and a non-zero exit status"
+    }
+  ],
+  "outputs": {
+    "json": "results/strategy-eval.json",
+    "trades_parquet": "results/strategy-trades.parquet",
+    "report": "results/strategy-report.md",
+    "trades_parquet_scope": "held-out runs only; fits are not written out"
+  },
+  "reproduce": "./scripts/run-strategy-eval.sh"
+}
