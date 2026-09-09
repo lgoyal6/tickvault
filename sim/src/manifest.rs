@@ -228,6 +228,26 @@ impl Loaded {
         })
     }
 
+    /// Every path the manifest names, with the hash it declares for it.
+    ///
+    /// Printed in `shasum -c` format so the gate script's check is made by
+    /// shasum rather than by this binary. A hash we both compute and check is
+    /// not much of a check.
+    pub fn declared_hashes(&self) -> Vec<(String, String)> {
+        let mut out = vec![(
+            self.manifest.input_index.path.clone(),
+            self.manifest.input_index.sha256.clone(),
+        )];
+        for input in &self.manifest.inputs {
+            out.push((input.parquet.clone(), input.parquet_sha256.clone()));
+            out.push((
+                input.manifest_jsonl.clone(),
+                input.manifest_jsonl_sha256.clone(),
+            ));
+        }
+        out
+    }
+
     /// Check every declared input against the bytes on disk.
     ///
     /// The gate script does this with `shasum` as well. Twice is deliberate: a
@@ -235,18 +255,7 @@ impl Loaded {
     /// exists to make impossible, and the evaluator is the half that reads.
     pub fn verify_inputs(&self) -> SimResult<Vec<(String, String)>> {
         let mut checked = Vec::new();
-        let mut declared: Vec<(String, String)> = vec![(
-            self.manifest.input_index.path.clone(),
-            self.manifest.input_index.sha256.clone(),
-        )];
-        for input in &self.manifest.inputs {
-            declared.push((input.parquet.clone(), input.parquet_sha256.clone()));
-            declared.push((
-                input.manifest_jsonl.clone(),
-                input.manifest_jsonl_sha256.clone(),
-            ));
-        }
-        for (relative, expected) in declared {
+        for (relative, expected) in self.declared_hashes() {
             let path = self.repo_root.join(&relative);
             let actual = sha256_file(&path)?;
             if actual != expected {

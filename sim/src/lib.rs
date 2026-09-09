@@ -25,12 +25,14 @@
 //! - [`risk`] limits and the kill switch
 //! - [`strategy`] four small strategies that see decision-time information only
 //! - [`eval`] walk-forward fitting, the leakage detector, and the bootstrap
+//! - [`report`] the JSON, the trades Parquet and the Markdown table
 
 pub mod costs;
 pub mod eval;
 pub mod feed;
 pub mod manifest;
 pub mod market;
+pub mod report;
 pub mod risk;
 pub mod strategy;
 
