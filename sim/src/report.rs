@@ -375,19 +375,21 @@ pub fn write_report(
 
     out.push_str(&format!(
         "Block bootstrap of the candidate's total held-out after-fee PnL: point {:.4}, 95 percent \
-         interval [{}, {}] over {} units of one window each, block length {}, {} resamples. {}\n\n",
+         interval [{}, {}], block length {}, {} resamples over {} units. The unit is {}\n\n",
         evaluation.bootstrap.point_estimate,
         number(evaluation.bootstrap.lower_95, 4),
         number(evaluation.bootstrap.upper_95, 4),
-        evaluation.bootstrap.units,
         evaluation.bootstrap.block_length,
         evaluation.bootstrap.resamples,
+        evaluation.bootstrap.units,
         evaluation.bootstrap.unit,
     ));
     out.push_str(&format!(
-        "Direction agreement: {} of the {} chronological held-out window positions carry the sign \
-         of the total.\n\n",
-        evaluation.direction_agreement, evaluation.direction_agreement_required
+        "Direction agreement: {} chronological held-out window position(s) carry the sign of the \
+         total, out of the {} positions the manifest defines. The gate requires at least {}.\n\n",
+        evaluation.direction_agreement,
+        evaluation.held_out_positions,
+        evaluation.direction_agreement_required
     ));
 
     out.push_str("## Rejected orders\n\n");
@@ -491,7 +493,14 @@ pub fn write_report(
          inside one recording, not a trading day, and nothing here is evidence about another day, \
          another instrument, or another regime.\n\
          - The maker rebate is zero, meaning a maker fill pays nothing. Real spot maker fees are \
-         usually a positive cost, so the quoting numbers are an upper bound.\n",
+         usually a positive cost, so the quoting numbers are an upper bound. The zero-cost control \
+         measures exactly what that is worth: the taker strategy pays a great deal and the quoting \
+         strategies pay nothing at all.\n\
+         - The half-spread grid was frozen in basis points, and the venue table above shows these \
+         books quoting a small fraction of one. A quote at the narrowest grid point still sits far \
+         outside the touch, which bounds every fill count here. That is a defect of the frozen \
+         experiment rather than of the simulator, and correcting it means a new manifest and a new \
+         run, not a rerun of this one.\n",
     );
 
     if let Some(parent) = path.parent() {

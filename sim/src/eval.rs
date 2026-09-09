@@ -244,6 +244,8 @@ pub struct Evaluation {
     pub bootstrap: BootstrapInterval,
     pub direction_agreement: usize,
     pub direction_agreement_required: usize,
+    /// How many chronological held-out window positions the manifest defines.
+    pub held_out_positions: usize,
     pub leakage_violations: u64,
     pub invariant_violations: u64,
     pub truncated_windows: usize,
@@ -708,6 +710,7 @@ pub fn evaluate(loaded: &Loaded, control: Control) -> SimResult<Evaluation> {
         bootstrap,
         direction_agreement,
         direction_agreement_required: 3,
+        held_out_positions: manifest.windows.held_out_indices.len(),
         leakage_violations,
         invariant_violations,
         truncated_windows,
