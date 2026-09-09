@@ -66,3 +66,15 @@ jobs:
           pip install --no-index --find-links dist tickvault-ob
       - working-directory: bindings
         run: pytest tests -q
+
+  # The strategy simulator. It is a separate workspace member, so a bare
+  # `cargo test` and `cargo clippy` at the root do not reach it: they select the
+  # root package only. Its own tests replay the committed recordings and need no
+  # venue, no network and no wheel.
+  sim:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - run: rustup component add clippy
+      - run: cargo clippy -p tickvault-sim --all-targets -- -D warnings
+      - run: cargo test -p tickvault-sim --release
