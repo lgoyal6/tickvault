@@ -20,9 +20,13 @@
 //! - [`feed`] loading a venue's archive, enforcing its sequence scheme, and
 //!   cutting it into chronological windows. A detected violation stops the
 //!   window; nothing is ever stitched across a hole
+//! - [`costs`] fees, slippage and a seeded latency model
+//! - [`market`] the book, our own orders, and the fill model
 
+pub mod costs;
 pub mod feed;
 pub mod manifest;
+pub mod market;
 
 /// What went wrong. One flat error: this is a batch job that either produces a
 /// result or says why it did not.
