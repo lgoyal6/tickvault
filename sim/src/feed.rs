@@ -477,6 +477,31 @@ impl VenueFeed {
         }
     }
 
+    /// The median spread of this recording, in basis points of the mid.
+    ///
+    /// Measured rather than assumed, and reported next to the results, because
+    /// a half-spread parameter chosen without it can be an order of magnitude
+    /// wide for the instrument and then almost never gets filled. That is a
+    /// property of the input, not a knob: it is measured after the manifest was
+    /// frozen and changes nothing the manifest decided.
+    pub fn median_spread_bps(&self) -> Option<f64> {
+        let mut replayer = BookReplayer::new(self.symbol.clone(), BookLevel::L2, self.feed_depth);
+        let mut samples: Vec<f64> = Vec::with_capacity(self.messages.len());
+        for message in &self.messages {
+            replayer.apply_message(&message.rows);
+            let book = replayer.book_ref();
+            if let (Some((bid, _)), Some((ask, _))) = (book.best_bid(), book.best_ask()) {
+                let bid = bid.to_f64_lossy();
+                let ask = ask.to_f64_lossy();
+                let mid = (bid + ask) / 2.0;
+                if mid > 0.0 {
+                    samples.push((ask - bid) / mid * 10_000.0);
+                }
+            }
+        }
+        crate::costs::quantile(&samples, 0.5)
+    }
+
     /// Replay the warmup prefix once and photograph the state at each window
     /// boundary.
     ///
@@ -968,6 +993,24 @@ mod tests {
                  message in order, which would let it claim to be fully verified"
             );
             assert!(after.unverifiable > before.unverifiable);
+        }
+    }
+
+    #[test]
+    fn the_measured_spread_is_a_fraction_of_a_basis_point_on_every_venue() {
+        // The frozen half-spread grid runs from one to five basis points, and
+        // this is what says how far outside the touch that puts a quote on a
+        // BTC book. The number belongs in the report next to the fill counts.
+        for (feed, _) in feeds() {
+            let spread = feed
+                .median_spread_bps()
+                .unwrap_or_else(|| panic!("{} has a two-sided book", feed.venue));
+            assert!(spread > 0.0, "{} spread {spread}", feed.venue);
+            assert!(
+                spread < 1.0,
+                "{} median spread is {spread} bp; the grid's own scale is no longer the story",
+                feed.venue
+            );
         }
     }
 

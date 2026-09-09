@@ -24,8 +24,10 @@
 //! - [`market`] the book, our own orders, and the fill model
 //! - [`risk`] limits and the kill switch
 //! - [`strategy`] four small strategies that see decision-time information only
+//! - [`eval`] walk-forward fitting, the leakage detector, and the bootstrap
 
 pub mod costs;
+pub mod eval;
 pub mod feed;
 pub mod manifest;
 pub mod market;
