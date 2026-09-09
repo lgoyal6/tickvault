@@ -41,6 +41,15 @@ use tickvault::{Fixed, Side};
 
 use crate::costs::Costs;
 
+/// How deep a marketable order or a crossing is allowed to look.
+///
+/// Bounded because the alternative is copying a whole side of a book out of the
+/// map on every message, and a five minute Coinbase recording holds thousands
+/// of levels. Both uses of it understate rather than overstate: a crossing
+/// deeper than this contributes less volume, and a marketable order that runs
+/// out of levels is recorded as a short fill instead of inventing depth.
+pub const WALK_DEPTH_LIMIT: usize = 64;
+
 pub type OwnOrderId = u64;
 
 /// Whether a fill took liquidity or provided it.
@@ -427,7 +436,7 @@ impl Market {
             Side::Ask => Side::Bid,
         };
         let buying = side == Side::Bid;
-        let levels = book.top(opposite, usize::MAX);
+        let levels = book.top(opposite, WALK_DEPTH_LIMIT);
         let mut left = size;
         let mut any = false;
         for (price, qty) in levels {
@@ -601,20 +610,32 @@ impl Market {
     /// positive trade evidence an aggregated feed carries. That volume consumes
     /// the queue in front of us first.
     fn fill_from_crossings(&mut self, book: &L2Book, now: i64) {
+        // The touch decides whether anything crossed at all, and it is one
+        // lookup. Only a book that actually crossed is worth copying levels
+        // out of.
+        let best_ask = book.best_ask().map(|(p, _)| p);
+        let best_bid = book.best_bid().map(|(p, _)| p);
         let mut fills: Vec<Fill> = Vec::new();
         for order in &mut self.resting {
             if order.remaining <= 0.0 {
                 continue;
             }
+            let crossed = match order.side {
+                Side::Bid => best_ask.is_some_and(|ask| ask <= order.price),
+                Side::Ask => best_bid.is_some_and(|bid| bid >= order.price),
+            };
+            if !crossed {
+                continue;
+            }
             let available = match order.side {
                 Side::Bid => book
-                    .top(Side::Ask, usize::MAX)
+                    .top(Side::Ask, WALK_DEPTH_LIMIT)
                     .into_iter()
                     .take_while(|(price, _)| *price <= order.price)
                     .map(|(_, qty)| f(qty))
                     .sum::<f64>(),
                 Side::Ask => book
-                    .top(Side::Bid, usize::MAX)
+                    .top(Side::Bid, WALK_DEPTH_LIMIT)
                     .into_iter()
                     .take_while(|(price, _)| *price >= order.price)
                     .map(|(_, qty)| f(qty))
