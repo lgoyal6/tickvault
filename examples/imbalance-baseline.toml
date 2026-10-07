@@ -1,0 +1,33 @@
+name = "imbalance-baseline"
+spec_version = 1
+code_version = "HEAD"
+input_datasets = ["kraken-demo@1"]
+seed = 42
+baselines = ["constant", "previous-return"]
+
+[window]
+start = "2026-08-25T00:49:20Z"
+end = "2026-08-25T00:53:26Z"
+
+[sampling]
+step_ms = 250
+depth = 10
+volatility_returns = 4
+
+[[features]]
+name = "order_book_imbalance"
+parameters = { depth = 10 }
+
+[labels]
+horizon_seconds = 1
+
+[splits]
+kind = "chronological"
+embargo_seconds = 2
+train = { start = "2026-08-25T00:49:20Z", end = "2026-08-25T00:50:20Z" }
+validation = { start = "2026-08-25T00:50:22Z", end = "2026-08-25T00:51:22Z" }
+test = { start = "2026-08-25T00:51:24Z", end = "2026-08-25T00:53:26Z" }
+
+[resources]
+workers = 2
+memory_mb = 512

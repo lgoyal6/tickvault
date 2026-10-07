@@ -1,0 +1,13 @@
+[package]
+name = "tickvault-features"
+version = "0.1.1"
+edition = "2024"
+description = "Order book indicators with declared contracts, computed only from verified tickvault data"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/lgoyal6/tickvault"
+publish = false
+
+[dependencies]
+# The read half only: no capture, no tokio, no TLS.
+tickvault = { path = "../..", default-features = false }
+serde = { version = "1.0.229", features = ["derive"] }

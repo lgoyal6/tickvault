@@ -2,7 +2,30 @@
 # The bindings are a separate crate so the core stays a plain library: a
 # `cdylib` in the main package would drag a Python ABI into every build of the
 # recorder.
-members = ["bindings", "sim"]
+#
+# The Indicator Lab crates sit under `crates/`. See
+# docs/decisions/0001-workspace-layout.md for why the library itself stays one
+# crate and only the binary moved.
+members = [
+    "bindings",
+    "sim",
+    "crates/cli",
+    "crates/features",
+    "crates/experiment",
+    "crates/report",
+]
+# What a bare `cargo build`, `cargo test` or `cargo run` at the root selects.
+# The CLI is here so `cargo run --release -- verify ...` keeps working now that
+# the binary lives in its own crate. The bindings are left out because building
+# a pyo3 `cdylib` needs a Python toolchain most contributors do not have, and
+# `sim` keeps its own CI job as it did before.
+default-members = [
+    ".",
+    "crates/cli",
+    "crates/features",
+    "crates/experiment",
+    "crates/report",
+]
 
 [package]
 name = "tickvault"
@@ -57,14 +80,11 @@ default = ["record"]
 # wasm for the viewer. Capture drags in tokio, a TLS stack, and a zstd that
 # ships hand-written amd64 assembly, none of which belong in a browser.
 record = [
-    "dep:anyhow",
     "dep:async-trait",
-    "dep:clap",
     "dep:futures-util",
     "dep:reqwest",
     "dep:tokio",
     "dep:tokio-tungstenite",
-    "dep:tracing-subscriber",
     "dep:toml",
     "dep:axum",
     "arrow/prettyprint",
@@ -72,11 +92,9 @@ record = [
 ]
 
 [dependencies]
-anyhow = { version = "1.0.104", optional = true }
 axum = { version = "0.8.7", default-features = false, features = ["http1", "tokio"], optional = true }
 arrow = { version = "59.2.0", default-features = false }
 async-trait = { version = "0.1.92", optional = true }
-clap = { version = "4.6.6", features = ["derive"], optional = true }
 crc32fast = "1.5.1"
 futures-util = { version = "0.3.34", optional = true }
 parquet = { version = "59.2.0", default-features = false, features = ["arrow", "snap", "base64"] }
@@ -88,11 +106,6 @@ toml = { version = "0.9.9", optional = true }
 tokio = { version = "1.53.1", features = ["rt-multi-thread", "macros", "net", "time", "sync", "fs", "io-util", "signal"], optional = true }
 tokio-tungstenite = { version = "0.30.0", features = ["rustls-tls-webpki-roots"], optional = true }
 tracing = "0.1.44"
-tracing-subscriber = { version = "0.3.23", features = ["env-filter"], optional = true }
-
-[[bin]]
-name = "tickvault"
-required-features = ["record"]
 
 [dev-dependencies]
 rand = "0.10.2"

@@ -2131,11 +2131,9 @@ dependencies = [
 name = "tickvault"
 version = "0.1.1"
 dependencies = [
- "anyhow",
  "arrow",
  "async-trait",
  "axum",
- "clap",
  "crc32fast",
  "futures-util",
  "parquet",
@@ -2149,7 +2147,47 @@ dependencies = [
  "tokio-tungstenite",
  "toml",
  "tracing",
+]
+
+[[package]]
+name = "tickvault-cli"
+version = "0.1.1"
+dependencies = [
+ "anyhow",
+ "arrow",
+ "clap",
+ "parquet",
+ "serde_json",
+ "tempfile",
+ "tickvault",
+ "tickvault-experiment",
+ "tickvault-features",
+ "tickvault-report",
+ "tokio",
+ "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "tickvault-experiment"
+version = "0.1.1"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "tickvault",
+ "tickvault-features",
+ "toml",
+]
+
+[[package]]
+name = "tickvault-features"
+version = "0.1.1"
+dependencies = [
+ "serde",
+ "tickvault",
 ]
 
 [[package]]
@@ -2159,6 +2197,17 @@ dependencies = [
  "arrow",
  "pyo3",
  "tickvault",
+]
+
+[[package]]
+name = "tickvault-report"
+version = "0.1.1"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "tickvault-experiment",
 ]
 
 [[package]]

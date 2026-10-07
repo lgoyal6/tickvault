@@ -33,8 +33,6 @@
 //! separately and the recovery time is their sum, and every row count reported
 //! beside a duration is a count of rows this test actually decoded.
 
-mod common;
-
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::path::Path;
@@ -649,7 +647,9 @@ fn measure_restoring_the_published_archive() {
         "kraken",
         "okx",
     ] {
-        let source = Path::new("docs/data").join(venue);
+        let source = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/data")
+            .join(venue);
         if !source.join("_manifest.jsonl").exists() {
             eprintln!("{venue}: no published archive here, skipping");
             continue;
@@ -802,9 +802,4 @@ fn wall_now() -> i64 {
         .duration_since(std::time::UNIX_EPOCH)
         .expect("clock")
         .as_nanos() as i64
-}
-
-#[allow(dead_code)]
-fn _uses_common() {
-    let _ = common::btc_usd();
 }

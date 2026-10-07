@@ -622,6 +622,7 @@ impl Archive {
     /// shrinking and never says whether it traded or was cancelled, so zero
     /// would be a claim the data does not support.
     #[pyo3(signature = (venue, symbol, bar_seconds = 60.0, start = None, end = None, depth = 10))]
+    #[allow(clippy::too_many_arguments)]
     fn bars<'py>(
         &self,
         py: Python<'py>,
