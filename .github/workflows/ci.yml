@@ -44,7 +44,7 @@ jobs:
           node-version: '22'
       - run: node scripts/verify-viewer.mjs
       # The feature split: no tokio, no TLS stack, no C compression codec.
-      - run: cargo check --locked --lib --no-default-features --target wasm32-unknown-unknown
+      - run: cargo check --locked -p tickvault --lib --no-default-features --target wasm32-unknown-unknown
       - name: viewer compiles to wasm
         working-directory: viewer
         run: cargo build --locked --release --target wasm32-unknown-unknown
