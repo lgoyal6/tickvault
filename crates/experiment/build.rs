@@ -35,7 +35,11 @@ fn main() {
         .join("../..")
         .canonicalize()
         .unwrap();
-    let mut files = vec![root.join("Cargo.toml"), root.join("Cargo.lock")];
+    let mut files = vec![
+        root.join("Cargo.toml"),
+        root.join("Cargo.lock"),
+        root.join("rust-toolchain.toml"),
+    ];
     for dir in ["src", "crates"] {
         collect(&root.join(dir), &mut files);
     }
