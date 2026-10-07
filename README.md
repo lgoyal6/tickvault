@@ -593,3 +593,29 @@ cargo run --release -- replay  --archive ./archive --venue kraken --symbol BTC-U
 
 MIT or Apache-2.0, at your option. See [LICENSE-MIT](LICENSE-MIT) and
 [LICENSE-APACHE](LICENSE-APACHE).
+
+### Reproducible development toolchain
+
+Install Rust with rustup, then run `source scripts/rust-toolchain-env.sh` if your
+PATH contains a Homebrew compiler. `rust-toolchain.toml` pins Rust 1.98.0,
+formatting, linting, and the WASM target. Use `--locked` with Cargo builds.
+
+```sh
+source scripts/rust-toolchain-env.sh
+cargo build --locked -p tickvault-cli -j 2
+python3 scripts/verify-reproducibility.py --bin target/debug/tickvault
+node scripts/verify-viewer.mjs # Node 22+, exercises the shipped WASM and JS glue
+cargo test --locked -p tickvault-cli --test gate_crash_recovery -- --ignored
+cargo build --locked --manifest-path viewer/Cargo.toml --target wasm32-unknown-unknown -j 2
+python3 -m venv /tmp/tickvault-python-tests
+/tmp/tickvault-python-tests/bin/pip install -r bindings/requirements-test.txt
+CARGO_BUILD_JOBS=2 /tmp/tickvault-python-tests/bin/maturin build --locked --manifest-path bindings/Cargo.toml --out /tmp/tickvault-wheels
+/tmp/tickvault-python-tests/bin/pip install --no-index --find-links /tmp/tickvault-wheels tickvault-ob
+TICKVAULT_BIN="$PWD/target/debug/tickvault" /tmp/tickvault-python-tests/bin/pytest bindings/tests -q
+```
+
+The reproducibility check runs the committed baseline twice, compares both
+report formats byte for byte, and checks dataset and code provenance. Metrics
+remain null for legacy archives without feed-loss attestations. Update Python
+test pins deliberately with `uv pip compile bindings/requirements-test.in --python-version 3.12 -o
+bindings/requirements-test.txt`, then rerun wheel tests.

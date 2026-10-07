@@ -4,6 +4,7 @@ on: [push, pull_request]
 
 env:
   CARGO_TERM_COLOR: always
+  CARGO_BUILD_JOBS: 2
 
 jobs:
   # Formatting, lints and the whole suite. Clippy is -D warnings because a
@@ -12,10 +13,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - run: rustup component add rustfmt clippy
+      - run: rustup show active-toolchain
       - run: cargo fmt --check
-      - run: cargo clippy --all-targets -- -D warnings
-      - run: cargo test --release
+      - run: cargo clippy --locked --all-targets -- -D warnings
+      - run: cargo test --locked --release
+      - run: python3 scripts/verify-reproducibility.py --bin target/release/tickvault
 
   # The phase 3 acceptance gate, and the reason the archive can claim anything
   # about crashes: SIGKILL the writer at randomised offsets during sustained
@@ -27,7 +29,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - run: cargo test --release --test gate_crash_recovery -- --ignored --nocapture
+      - run: cargo test --locked --release --test gate_crash_recovery -- --ignored --nocapture
 
   # Two claims. The read half of the crate compiles without the capture half,
   # which is what makes the viewer possible; and the viewer rebuilds the same
@@ -37,14 +39,18 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - run: rustup target add wasm32-unknown-unknown
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - run: node scripts/verify-viewer.mjs
       # The feature split: no tokio, no TLS stack, no C compression codec.
-      - run: cargo check --lib --no-default-features --target wasm32-unknown-unknown
+      - run: cargo check --locked --lib --no-default-features --target wasm32-unknown-unknown
       - name: viewer compiles to wasm
         working-directory: viewer
-        run: cargo build --release --target wasm32-unknown-unknown
+        run: cargo build --locked --release --target wasm32-unknown-unknown
       - name: viewer agrees with the library
         working-directory: viewer
-        run: cargo test --release
+        run: cargo test --locked --release
 
   # The bindings, against a wheel rather than a source tree, so the tests
   # exercise what someone actually installs.
@@ -57,15 +63,15 @@ jobs:
           python-version: '3.12'
       # The Python tests replay committed tapes through this binary to build a
       # fixture archive, so they need it built but never need a live venue.
-      - run: cargo build --release --bin tickvault
-      - run: pip install maturin pytest pyarrow polars pandas matplotlib
+      - run: cargo build --locked --release --bin tickvault
+      - run: pip install -r bindings/requirements-test.txt
       - name: build and install the wheel
         working-directory: bindings
         run: |
-          maturin build --release --out dist
+          maturin build --locked --release --out dist
           pip install --no-index --find-links dist tickvault-ob
       - working-directory: bindings
-        run: pytest tests -q
+        run: TICKVAULT_BIN="$GITHUB_WORKSPACE/target/release/tickvault" pytest tests -q
 
   # The strategy simulator. It is a separate workspace member, so a bare
   # `cargo test` and `cargo clippy` at the root do not reach it: they select the
@@ -75,6 +81,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - run: rustup component add clippy
-      - run: cargo clippy -p tickvault-sim --all-targets -- -D warnings
-      - run: cargo test -p tickvault-sim --release
+      - run: rustup show active-toolchain
+      - run: cargo clippy --locked -p tickvault-sim --all-targets -- -D warnings
+      - run: cargo test --locked -p tickvault-sim --release
