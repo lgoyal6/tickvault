@@ -1,0 +1,6 @@
+maturin>=1.5,<2
+pytest
+pyarrow>=14
+polars>=0.20
+pandas>=2.0
+matplotlib>=3.5

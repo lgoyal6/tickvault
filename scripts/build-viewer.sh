@@ -10,17 +10,14 @@ set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$here/viewer"
 
-# Homebrew's rust ships no wasm32 std, so the toolchain has to come from rustup.
-if [ -d /opt/homebrew/opt/rustup/bin ]; then
-  export PATH="/opt/homebrew/opt/rustup/bin:$PATH"
-fi
+. "$here/scripts/rust-toolchain-env.sh"
 
 # Panic messages from dependencies embed the absolute path of whatever machine
 # built them, so without this the shipped wasm carries the builder's home
 # directory. Remapping also makes the artefact reproducible across machines.
 export RUSTFLAGS="${RUSTFLAGS:-} --remap-path-prefix=$HOME=~ --remap-path-prefix=$here=."
 
-wasm-pack build --target web --release --out-dir pkg
+CARGO_BUILD_JOBS=2 wasm-pack build --target web --release --out-dir pkg -- --locked
 rm -f pkg/.gitignore
 
 rm -rf "$here/docs/pkg"
