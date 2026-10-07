@@ -23,6 +23,8 @@ use tickvault::transport::ReqwestFetch;
 use tickvault::types::{Symbol, VenueId};
 use tickvault::venue::kraken::Precision;
 use tickvault::venue::registry::{self, VenueConfig};
+use tickvault_experiment::{CodeIdentity, dataset::DatasetManifest, spec::Spec};
+use tickvault_report::Report;
 
 #[derive(Parser)]
 #[command(
@@ -293,6 +295,51 @@ enum Command {
         /// Seconds between checkpoints.
         #[arg(long, default_value_t = 300)]
         every_secs: u64,
+    },
+    /// Freeze an archive selection into an immutable checksum-bound dataset.
+    Dataset {
+        #[arg(long)]
+        archive: String,
+        #[arg(long)]
+        id: String,
+        #[arg(long, default_value_t = 1)]
+        version: u32,
+        #[arg(long)]
+        out: String,
+        #[arg(long, default_value = "tickvault dataset create")]
+        command: String,
+    },
+    /// Validate an experiment TOML before scheduling any work.
+    ExperimentValidate {
+        #[arg(long)]
+        spec: String,
+        /// JSON object mapping dataset references such as tape@1 to manifest hashes.
+        #[arg(long)]
+        manifests: String,
+    },
+    /// Render a machine-readable report JSON into Markdown.
+    ReportRender {
+        #[arg(long)]
+        input: String,
+        #[arg(long)]
+        out: String,
+    },
+    /// Run a validated experiment against a frozen dataset and write its report.
+    ExperimentRun {
+        #[arg(long)]
+        spec: String,
+        #[arg(long)]
+        archive: String,
+        #[arg(long)]
+        dataset: String,
+        #[arg(long)]
+        dataset_ref: String,
+        #[arg(long)]
+        venue: VenueId,
+        #[arg(long)]
+        symbol: String,
+        #[arg(long)]
+        out: String,
     },
     /// Print what each venue can and cannot tell us.
     Capabilities {
@@ -1423,6 +1470,117 @@ async fn main() -> Result<()> {
             );
         }
 
+        Command::Dataset {
+            archive,
+            id,
+            version,
+            out,
+            command,
+        } => {
+            let manifest =
+                DatasetManifest::capture(std::path::Path::new(&archive), &id, version, command)
+                    .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+            let path = manifest
+                .publish(std::path::Path::new(&out))
+                .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+            println!(
+                "published {}@v{}: {}",
+                manifest.id,
+                manifest.version,
+                path.display()
+            );
+        }
+        Command::ExperimentValidate { spec, manifests } => {
+            let text = std::fs::read_to_string(spec)?;
+            let values: std::collections::BTreeMap<String, String> =
+                serde_json::from_slice(&std::fs::read(manifests)?)?;
+            let validated = Spec::parse(&text)
+                .map_err(|e| anyhow::anyhow!(e.to_string()))?
+                .validate(&values, CodeIdentity::compiled())
+                .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+            println!(
+                "valid experiment {}",
+                validated
+                    .identity()
+                    .map_err(|e| anyhow::anyhow!(e.to_string()))?
+            );
+        }
+        Command::ExperimentRun {
+            spec,
+            archive,
+            dataset,
+            dataset_ref,
+            venue,
+            symbol,
+            out,
+        } => {
+            use std::sync::atomic::AtomicBool;
+            let spec_text = std::fs::read_to_string(spec)?;
+            let manifest: tickvault_experiment::dataset::DatasetManifest =
+                serde_json::from_slice(&std::fs::read(&dataset)?)?;
+            let datasets = std::collections::BTreeMap::from([(
+                dataset_ref.clone(),
+                manifest.manifest_sha256.clone(),
+            )]);
+            let validated = Spec::parse(&spec_text)
+                .map_err(|e| anyhow::anyhow!(e.to_string()))?
+                .validate(&datasets, CodeIdentity::compiled())
+                .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+            let frozen = tickvault_experiment::dataset::VerifiedDataset::open(
+                std::path::Path::new(&archive),
+                std::path::Path::new(&dataset),
+            )
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+            let symbol = Symbol::parse(&symbol).map_err(anyhow::Error::msg)?;
+            let result = tickvault_experiment::research::run(
+                &frozen,
+                &dataset_ref,
+                venue,
+                &symbol,
+                &validated,
+                &AtomicBool::new(false),
+            )
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+            let report_id = validated
+                .identity()
+                .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+            let metrics = result
+                .baselines
+                .iter()
+                .map(|m| tickvault_report::Metric {
+                    name: format!("{}_{}_mae", m.split, m.baseline),
+                    value: m.mean_absolute_error,
+                    unit: "absolute log-return".into(),
+                })
+                .collect();
+            let report = Report {
+                report_id: report_id.clone(),
+                experiment_id: report_id,
+                code: validated.code.clone(),
+                dataset_manifests: vec![manifest.manifest_sha256],
+                seed: validated.seed,
+                status: "complete".into(),
+                metrics,
+                exclusions: result
+                    .exclusions
+                    .into_iter()
+                    .map(|(reason, count)| tickvault_report::ExclusionSummary { reason, count })
+                    .collect(),
+                limitations: result.limitations,
+            };
+            report
+                .write(std::path::Path::new(&out))
+                .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+            println!("wrote experiment report to {}", out);
+        }
+        Command::ReportRender { input, out } => {
+            let report: Report = serde_json::from_slice(&std::fs::read(input)?)?;
+            std::fs::create_dir_all(&out)?;
+            report
+                .write(std::path::Path::new(&out))
+                .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+            println!("wrote report {}", report.report_id);
+        }
         Command::Capabilities { venue } => {
             let clock: Arc<dyn Clock> = Arc::new(MonotonicClock::new());
             let http = ReqwestFetch::shared()?;
