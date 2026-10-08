@@ -102,6 +102,19 @@ impl DatasetManifest {
         Ok(digest(&serde_json::to_vec(&copy)?))
     }
     pub fn capture(root: &Path, id: &str, version: u32, creation_command: String) -> Result<Self> {
+        Self::capture_with_capability(root, id, version, creation_command, None)
+    }
+
+    /// Capture a verified archive and bind the operator-supplied adapter
+    /// attestation into the immutable identity. The archive format deliberately
+    /// does not guess which process wrote it.
+    pub fn capture_with_capability(
+        root: &Path,
+        id: &str,
+        version: u32,
+        creation_command: String,
+        capability: Option<CapabilityAttestation>,
+    ) -> Result<Self> {
         if !safe_id(id) || version == 0 {
             return Err("invalid dataset id or version".into());
         }
@@ -126,7 +139,23 @@ impl DatasetManifest {
         if files.is_empty() {
             return Err("cannot publish an empty dataset".into());
         }
-        let mut value = Self { id: id.into(), version, schema_version: 1, files, truncations: archive.manifest().truncations().to_vec(), clock: "signed UTC receipt nanoseconds; venue timestamps are not availability times".into(), known_blind_spots: vec!["Archives do not persist the capture adapter version or its loss-check capability. Feed verifiability must remain unknown until independently attested.".into(), "Checksums detect changed bytes; they do not authenticate the dataset publisher.".into()], creation_command, manifest_sha256: String::new(), capability: None };
+        let mut value = Self {
+            id: id.into(),
+            version,
+            schema_version: 1,
+            files,
+            truncations: archive.manifest().truncations().to_vec(),
+            clock: "signed UTC receipt nanoseconds; venue timestamps are not availability times"
+                .into(),
+            known_blind_spots: if capability.is_some() {
+                vec!["Checksums detect changed bytes; they do not authenticate the dataset publisher.".into()]
+            } else {
+                vec!["Archives do not persist the capture adapter version or its loss-check capability. Feed verifiability must remain unknown until independently attested.".into(), "Checksums detect changed bytes; they do not authenticate the dataset publisher.".into()]
+            },
+            creation_command,
+            manifest_sha256: String::new(),
+            capability,
+        };
         value.manifest_sha256 = value.identity()?;
         Ok(value)
     }
