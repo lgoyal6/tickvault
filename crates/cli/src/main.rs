@@ -308,6 +308,16 @@ enum Command {
         out: String,
         #[arg(long, default_value = "tickvault dataset create")]
         command: String,
+        /// Immutable capture attestation. Omit all four to preserve an
+        /// explicitly unverifiable legacy-style manifest.
+        #[arg(long)]
+        adapter_version: Option<String>,
+        #[arg(long)]
+        validator_version: Option<String>,
+        #[arg(long)]
+        can_detect_loss: bool,
+        #[arg(long)]
+        validation_scope: Option<String>,
     },
     /// Validate an experiment TOML before scheduling any work.
     ExperimentValidate {
@@ -1476,10 +1486,39 @@ async fn main() -> Result<()> {
             version,
             out,
             command,
+            adapter_version,
+            validator_version,
+            can_detect_loss,
+            validation_scope,
         } => {
-            let manifest =
-                DatasetManifest::capture(std::path::Path::new(&archive), &id, version, command)
-                    .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+            let any_attestation = adapter_version.is_some()
+                || validator_version.is_some()
+                || validation_scope.is_some()
+                || can_detect_loss;
+            if any_attestation
+                && (adapter_version.is_none()
+                    || validator_version.is_none()
+                    || validation_scope.is_none())
+            {
+                anyhow::bail!(
+                    "adapter-version, validator-version, validation-scope and can-detect-loss are an all-or-nothing attestation; omit all four for unknown"
+                );
+            }
+            let capability =
+                any_attestation.then(|| tickvault_experiment::dataset::CapabilityAttestation {
+                    adapter_version: adapter_version.unwrap(),
+                    validator_version: validator_version.unwrap(),
+                    can_detect_loss,
+                    scope: validation_scope.unwrap(),
+                });
+            let manifest = DatasetManifest::capture_with_capability(
+                std::path::Path::new(&archive),
+                &id,
+                version,
+                command,
+                capability,
+            )
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
             let path = manifest
                 .publish(std::path::Path::new(&out))
                 .map_err(|e| anyhow::anyhow!(e.to_string()))?;
