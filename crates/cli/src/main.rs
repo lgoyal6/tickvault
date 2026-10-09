@@ -1571,18 +1571,64 @@ async fn main() -> Result<()> {
             )
             .map_err(|e| anyhow::anyhow!(e.to_string()))?;
             let symbol = Symbol::parse(&symbol).map_err(anyhow::Error::msg)?;
-            let result = tickvault_experiment::research::run(
-                &frozen,
-                &dataset_ref,
-                venue,
-                &symbol,
-                &validated,
-                &AtomicBool::new(false),
-            )
-            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
-            let report_id = validated
+            let experiment_id = validated
                 .identity()
                 .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+            let state_root = std::path::Path::new(&out)
+                .parent()
+                .unwrap_or(std::path::Path::new("."))
+                .join(format!(".tickvault-experiment-{experiment_id}"));
+            let executor = tickvault_experiment::executor::Executor::new(
+                state_root.join("run"),
+                state_root.join("cache"),
+                validated.resources.workers,
+                validated.resources.memory_mb * 1024 * 1024,
+            )
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+            let task = tickvault_experiment::executor::Task {
+                id: experiment_id.clone(),
+                estimated_memory_bytes: validated.resources.memory_mb * 1024 * 1024,
+                input: serde_json::json!({"dataset": manifest.manifest_sha256, "spec": experiment_id}),
+            };
+            let result_records = executor
+                .run(
+                    vec![task],
+                    |_, cancel| {
+                        let result = tickvault_experiment::research::run(
+                            &frozen,
+                            &dataset_ref,
+                            venue,
+                            &symbol,
+                            &validated,
+                            cancel,
+                        )
+                        .map_err(|e| {
+                            tickvault_experiment::executor::Failure::Permanent(e.to_string())
+                        })?;
+                        serde_json::to_value(result).map_err(|e| {
+                            tickvault_experiment::executor::Failure::Permanent(e.to_string())
+                        })
+                    },
+                    &AtomicBool::new(false),
+                )
+                .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+            let record = result_records
+                .into_iter()
+                .next()
+                .ok_or_else(|| anyhow::anyhow!("executor returned no result"))?;
+            if record.status != tickvault_experiment::executor::Status::Succeeded {
+                return Err(anyhow::anyhow!(
+                    record
+                        .error
+                        .unwrap_or_else(|| "experiment did not succeed".into())
+                ));
+            }
+            let result: tickvault_experiment::research::ResearchResult = serde_json::from_value(
+                record
+                    .output
+                    .ok_or_else(|| anyhow::anyhow!("executor result missing output"))?,
+            )?;
+            let report_id = experiment_id;
             let metrics = result
                 .baselines
                 .iter()
