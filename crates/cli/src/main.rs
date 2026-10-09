@@ -351,6 +351,15 @@ enum Command {
         #[arg(long)]
         out: String,
     },
+    /// Compare two reports without treating missing metrics as zero.
+    ExperimentCompare {
+        #[arg(long)]
+        left: String,
+        #[arg(long)]
+        right: String,
+        #[arg(long)]
+        out: Option<String>,
+    },
     /// Print what each venue can and cannot tell us.
     Capabilities {
         /// Restrict to one venue.
@@ -1665,6 +1674,19 @@ async fn main() -> Result<()> {
                 .write(std::path::Path::new(&out))
                 .map_err(|e| anyhow::anyhow!(e.to_string()))?;
             println!("wrote report {}", report.report_id);
+        }
+        Command::ExperimentCompare { left, right, out } => {
+            let left: Report = serde_json::from_slice(&std::fs::read(left)?)?;
+            let right: Report = serde_json::from_slice(&std::fs::read(right)?)?;
+            let comparison = left
+                .comparison_json(&right)
+                .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+            if let Some(out) = out {
+                std::fs::write(&out, &comparison)?;
+                println!("wrote comparison {}", out);
+            } else {
+                println!("{comparison}");
+            }
         }
         Command::Capabilities { venue } => {
             let clock: Arc<dyn Clock> = Arc::new(MonotonicClock::new());
