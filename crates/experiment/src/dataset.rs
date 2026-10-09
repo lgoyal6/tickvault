@@ -26,6 +26,40 @@ pub struct CapabilityAttestation {
     pub can_detect_loss: bool,
     pub scope: String,
 }
+
+impl CapabilityAttestation {
+    pub fn new(
+        adapter_version: impl Into<String>,
+        validator_version: impl Into<String>,
+        can_detect_loss: bool,
+        scope: impl Into<String>,
+    ) -> Result<Self> {
+        let value = Self {
+            adapter_version: adapter_version.into(),
+            validator_version: validator_version.into(),
+            can_detect_loss,
+            scope: scope.into(),
+        };
+        value.validate()?;
+        Ok(value)
+    }
+
+    pub fn validate(&self) -> Result<()> {
+        for (name, value) in [
+            ("adapter-version", &self.adapter_version),
+            ("validator-version", &self.validator_version),
+            ("validation-scope", &self.scope),
+        ] {
+            if value.trim().is_empty() || value.len() > 256 || value.chars().any(char::is_control) {
+                return Err(format!(
+                    "{name} must be non-empty, <=256 characters, and free of control characters"
+                )
+                .into());
+            }
+        }
+        Ok(())
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DatasetFile {
@@ -115,6 +149,9 @@ impl DatasetManifest {
         creation_command: String,
         capability: Option<CapabilityAttestation>,
     ) -> Result<Self> {
+        if let Some(capability) = &capability {
+            capability.validate()?;
+        }
         if !safe_id(id) || version == 0 {
             return Err("invalid dataset id or version".into());
         }
@@ -160,6 +197,9 @@ impl DatasetManifest {
         Ok(value)
     }
     pub fn publish(&self, directory: &Path) -> Result<PathBuf> {
+        if let Some(capability) = &self.capability {
+            capability.validate()?;
+        }
         if !safe_id(&self.id) || self.version == 0 || self.identity()? != self.manifest_sha256 {
             return Err("invalid manifest identity".into());
         }
@@ -324,5 +364,11 @@ mod tests {
         manifest.manifest_sha256 = manifest.identity().unwrap();
         fs::write(&path, serde_json::to_vec(&manifest).unwrap()).unwrap();
         assert!(VerifiedDataset::open(&fixture(), &path).is_err());
+    }
+    #[test]
+    fn capability_attestations_are_strict() {
+        assert!(CapabilityAttestation::new("", "validator", true, "symbol").is_err());
+        assert!(CapabilityAttestation::new("adapter", "validator", true, "symbol\n").is_err());
+        assert!(CapabilityAttestation::new("adapter-1", "validator-1", true, "symbol").is_ok());
     }
 }
