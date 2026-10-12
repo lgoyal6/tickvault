@@ -11,3 +11,5 @@ viewer/target/
 
 # graphify knowledge graph (local index, not source)
 graphify-out/
+analytics/.gradle/
+analytics/build/

@@ -24,6 +24,15 @@ rather than finding out when your backtest looks suspiciously good.
 The recorder is not the point. The dataset is the point, and **the gap report is
 its front page.**
 
+## Scala and Flink analytics adapter
+
+`analytics/` is a separate consumer path over the published archive. It adds a
+Scala 2.12 Flink boundary with event-time watermarks and a Hadoop-compatible
+Hive partition layout for downstream Parquet metrics. The Rust recorder and
+reconstruction engine remain unchanged. Build it with `gradle test` from that
+directory; the module's README states which cluster and cloud claims still need
+separate validation.
+
 **[Read the verified microstructure result](research/RESULT.md).** Across five
 verifiable venues, imbalance predicted one-to-five-second returns in 46 of 48
 chronological folds, but the measured edge did not cover the round-trip spread.
