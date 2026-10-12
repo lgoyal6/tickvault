@@ -1,5 +1,6 @@
 plugins {
     id 'scala'
+    id 'application'
 }
 
 group = 'io.lgoyal.tickvault'
@@ -31,4 +32,8 @@ tasks.withType(ScalaCompile).configureEach {
 tasks.withType(Test).configureEach {
     useJUnit()
     maxParallelForks = 1
+}
+
+application {
+    mainClass = 'io.lgoyal.tickvault.analytics.LiveReplay'
 }

@@ -3,7 +3,7 @@ package io.lgoyal.tickvault.analytics
 import java.time.Duration
 
 import org.apache.flink.api.common.eventtime.{SerializableTimestampAssigner, WatermarkStrategy}
-import org.apache.flink.streaming.api.datastream.DataStream
+import org.apache.flink.streaming.api.scala.DataStream
 
 /** Flink boundary for replaying TickVault events with event-time semantics. */
 object FlinkPipeline {
