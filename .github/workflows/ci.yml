@@ -1,3 +1,6 @@
+# Check archive, native binding and research contracts before changes land.
+# Offline fixtures keep correctness checks independent of live exchange feeds.
+# Research comparisons with private source archives remain separate run evidence.
 name: ci
 
 on: [push, pull_request]
@@ -84,3 +87,18 @@ jobs:
       - run: rustup show active-toolchain
       - run: cargo clippy --locked -p tickvault-sim --all-targets -- -D warnings
       - run: cargo test --locked -p tickvault-sim --release
+
+  research:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+      - run: pip install -r research/requirements-periods.txt
+      - run: python3 -m unittest discover -s research -p 'test_*.py' -v
+        env:
+          OMP_NUM_THREADS: '1'
+          OPENBLAS_NUM_THREADS: '1'
+      - run: python3 research/public_result.py verify
+      - run: python3 research/stability.py results/strategy-eval.json --output "$RUNNER_TEMP/stability.json"
