@@ -6,6 +6,11 @@ bounded replay job, an offset checkpoint/restart contract, a deterministic
 baseline backtest, a watermark model for tests, and a Hadoop-compatible Hive
 partition layout for downstream Parquet writers.
 
+`Replay.run` consumes the suffix after the supplied offset and returns one final
+checkpoint containing the offset, last event time, and rolling checksum. Resume
+by passing that checkpoint with the full event sequence. Offsets must fall
+between zero and the sequence length, inclusive.
+
 ## Build and test
 
 ```sh
