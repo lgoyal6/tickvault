@@ -34,6 +34,12 @@ built on the published Python bindings, so it exercises what a user installs.
 | `tvstudy.py` | Chronological folds, two baselines, out-of-sample R-squared, block-bootstrap intervals, and what it would cost to act |
 | `tvcontrols.py` | A planted-signal positive control and a look-ahead control that rewrites the future |
 
+The [historical period comparison](PERIOD_STUDY.md) adds one fixed nonlinear
+model, matched feature ablations, cost diagnostics and date/venue uncertainty.
+Its frozen protocol binds the inputs, source, splits and assumptions.
+`stability.py` separately summarizes simulator windows; those windows are not
+independent dates. Previously analyzed periods remain historical evidence.
+
 ## Statistical implementation
 
 The build plan named statsmodels. This harness deliberately substitutes NumPy
