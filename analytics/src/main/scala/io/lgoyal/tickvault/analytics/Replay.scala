@@ -5,10 +5,10 @@ final case class ReplayCheckpoint(offset: Long, watermarkMillis: Long, checksum:
 final case class ReplayResult(processed: Long, lastEventTimeMillis: Long, checksum: Long, checkpoint: ReplayCheckpoint)
 
 object Replay {
-  def run(events: Seq[TickEvent], from: ReplayCheckpoint = ReplayCheckpoint(0L, Long.MinValue), checkpointEvery: Int = 10): ReplayResult = {
-    require(checkpointEvery > 0, "checkpoint interval must be positive")
+  /** Consume the remaining events and return one final local resume checkpoint. */
+  def run(events: Seq[TickEvent], from: ReplayCheckpoint = ReplayCheckpoint(0L, Long.MinValue)): ReplayResult = {
+    require(from.offset >= 0L && from.offset <= events.size.toLong, "checkpoint offset outside replay")
     val start = from.offset.toInt
-    require(start >= 0 && start <= events.size, "checkpoint offset outside replay")
     val slice = events.drop(start)
     val processed = slice.foldLeft((0L, from.checksum)) {
       case ((count, checksum), event) => (count + 1L, checksum * 31L + event.sequence + event.eventTimeMillis)

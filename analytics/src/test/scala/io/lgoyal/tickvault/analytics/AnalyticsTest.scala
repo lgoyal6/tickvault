@@ -34,6 +34,30 @@ final class AnalyticsTest {
     assertEquals(full.checksum, resumed.checksum)
   }
 
+  @Test def replayRejectsOffsetsBeforeNarrowingToAnIndex(): Unit = {
+    val events = (1 to 4).map(i => TickEvent("kraken", "BTC-USD", i * 1000L, i * 100000000L, 1, i, "trade"))
+    val invalid = Seq(-1L, Int.MaxValue.toLong + 1L, 1L << 32, (1L << 32) + 1L, Long.MaxValue, Long.MinValue)
+    invalid.foreach { offset =>
+      try {
+        Replay.run(events, ReplayCheckpoint(offset, 0L))
+        fail(s"accepted invalid checkpoint offset $offset")
+      } catch {
+        case error: IllegalArgumentException =>
+          assertEquals("requirement failed: checkpoint offset outside replay", error.getMessage)
+      }
+    }
+  }
+
+  @Test def replayAtTheEndPreservesItsCheckpoint(): Unit = {
+    val events = Seq(TickEvent("kraken", "BTC-USD", 1000L, 100000000L, 1, 1, "trade"))
+    val checkpoint = Replay.run(events).checkpoint
+    val result = Replay.run(events, checkpoint)
+    assertEquals(0L, result.processed)
+    assertEquals(checkpoint, result.checkpoint)
+    val empty = ReplayCheckpoint(0L, Long.MinValue, 17L)
+    assertEquals(empty, Replay.run(Seq.empty, empty).checkpoint)
+  }
+
   @Test def backtestReportsCostsAndReturns(): Unit = {
     val events = Seq(
       TickEvent("kraken", "BTC-USD", 1, 100, 1, 1, "trade"),
